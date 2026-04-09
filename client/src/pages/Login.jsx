@@ -4,12 +4,27 @@ import { Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('Student');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const loginData = { email, password, role }; // Role from your dropdown
+    
+    try {
+        const { data } = await axios.post('http://localhost:5000/api/auth/login', loginData);
+        localStorage.setItem('profile', JSON.stringify(data)); 
+        
+        // Redirect based on role
+        if(data.result.role === 'Student') navigate('/dashboard');
+        else if(data.result.role === 'Placement Officer') navigate('/tpo-admin');
+    } catch (err) {
+        alert(err.response.data.message);
+    }
+};
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       {/* Main Container */}
       <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-4xl w-full overflow-hidden">
-        
+
         {/* Left Side: Branding & Graphics */}
         <div className="md:w-1/2 bg-blue-500 p-10 flex flex-col justify-between text-white relative">
           <div>
@@ -23,24 +38,17 @@ const Login = () => {
 
           {/* 3D Character Placeholder Area */}
           <div className="mt-8 flex justify-center">
-             <div className="bg-blue-400/30 w-64 h-64 rounded-full flex items-center justify-center border border-white/20">
-                <span className="text-sm italic opacity-70 text-center px-4">
-                {/* Image Section */}
-<div className="mt-8 flex justify-center items-center">
-  <div className="w-64 h-64 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 overflow-hidden">
-    
-    <img 
-      src="canara.jpg"
-      alt="College Logo"
-      className="w-full h-full object-contain p-6"
-    />
+            <div className="bg-blue-400/30 w-64 h-64 rounded-full flex items-center justify-center border border-white/20 overflow-hidden">
 
-  </div>
-</div>
-                </span>
-             </div>
+              <img
+                src="/loginlogo.jpg"
+                alt="Login Illustration"
+                className="w-full h-full object-cover"
+              />
+
+            </div>
           </div>
-          
+
           <div className="mt-auto pt-10">
             <p className="text-sm text-blue-200">© 2026 CampusConnect Engineering College</p>
           </div>
@@ -62,7 +70,7 @@ const Login = () => {
             {/* Role Selector */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Login As</label>
-              <select 
+              <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
@@ -76,8 +84,8 @@ const Login = () => {
             {/* Email/USN Field */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Email or USN</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="e.g. 4CB21CS001"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               />
@@ -86,24 +94,24 @@ const Login = () => {
             {/* Password Field */}
             <div className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-              <input 
-                type={showPassword ? "text" : "password"} 
+              <input
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-[38px] text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
-              <div className="text-right mt-2">
-                <a href="#" className="text-sm text-slate-400 hover:text-blue-500">Forgot password?</a>
-              </div>
+             
             </div>
 
-            <button className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 shadow-lg shadow-blue-200 transition-all active:scale-[0.98]">
+            <button className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
+              onClick={handleSubmit}
+            >
               Login
             </button>
           </form>
