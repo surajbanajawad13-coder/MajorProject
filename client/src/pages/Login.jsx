@@ -25,7 +25,18 @@ const Login = () => {
           <div className="mt-8 flex justify-center">
              <div className="bg-blue-400/30 w-64 h-64 rounded-full flex items-center justify-center border border-white/20">
                 <span className="text-sm italic opacity-70 text-center px-4">
-                  [Friendly 3D Student Characters Graphic]
+                {/* Image Section */}
+<div className="mt-8 flex justify-center items-center">
+  <div className="w-64 h-64 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 overflow-hidden">
+    
+    <img 
+      src="canara.jpg"
+      alt="College Logo"
+      className="w-full h-full object-contain p-6"
+    />
+
+  </div>
+</div>
                 </span>
              </div>
           </div>
