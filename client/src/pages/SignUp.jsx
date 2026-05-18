@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 import {
   Eye,
@@ -175,10 +176,8 @@ const Signup = () => {
       skills: selectedSkills,
       interests: selectedInterests,
     };
-
-
     console.log(signupData);
-
+    const { data } = await axios.post('http://localhost:5000/api/auth/signup', signupData);
     toast.success('Account Created Successfully!');
   } catch (err) {
     toast.error('Signup failed. Please try again.');
