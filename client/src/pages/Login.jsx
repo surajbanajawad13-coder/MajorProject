@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, LayoutDashboard } from 'lucide-react';
+import { Eye, EyeOff, LayoutDashboard,ArrowLeft  } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('Student');
+  const navigate = useNavigate();
   const handleSubmit = async (e) => {
     e.preventDefault();
     const loginData = { email, password, role }; // Role from your dropdown
@@ -16,17 +20,24 @@ const Login = () => {
         if(data.result.role === 'Student') navigate('/dashboard');
         else if(data.result.role === 'Placement Officer') navigate('/tpo-admin');
     } catch (err) {
-        alert(err.response.data.message);
+        toast.error(err.response.data.message||"Login failed. Please try again.");
     }
 };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
+      <button
+  onClick={() => navigate("/")}
+  className="absolute top-6 left-6 flex items-center gap-2 bg-white shadow-md border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-100 transition z-50"
+>
+  <ArrowLeft size={18} />
+  <span className="font-medium text-slate-700">Back</span>
+</button>
       {/* Main Container */}
-      <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-4xl w-full overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-6xl w-full min-h-[760px] overflow-hidden">
 
         {/* Left Side: Branding & Graphics */}
-        <div className="md:w-1/2 bg-blue-500 p-10 flex flex-col justify-between text-white relative">
+        <div className="md:w-1/2 bg-blue-500 p-10 flex flex-col justify-center text-white relative">
           <div>
             <h1 className="text-4xl font-bold mb-4 leading-tight">
               Simplify campus management with our dashboard.
@@ -38,7 +49,7 @@ const Login = () => {
 
           {/* 3D Character Placeholder Area */}
           <div className="mt-8 flex justify-center">
-            <div className="bg-blue-400/30 w-64 h-64 rounded-full flex items-center justify-center border border-white/20 overflow-hidden">
+            <div className="bg-blue-400/30 w-72 h-72 rounded-full flex items-center justify-center border border-white/20 overflow-hidden">
 
               <img
                 src="/loginlogo.jpg"
@@ -55,7 +66,7 @@ const Login = () => {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="md:w-1/2 p-10 md:p-16">
+        <div className="md:w-1/2 p-10 md:p-14 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-8">
             <div className="bg-orange-500 p-2 rounded-lg text-white">
               <LayoutDashboard size={24} />
