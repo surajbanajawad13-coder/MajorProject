@@ -68,14 +68,14 @@ const Home = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/login")}
-              className="text-sm font-semibold text-slate-700 hover:text-blue-600 transition"
+              className="text-sm font-semibold text-slate-700 hover:text-blue-600 transition cursor-pointer"
             >
               Login
             </button>
 
             <button
               onClick={() => navigate("/signup")}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-blue-200 transition"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-blue-200 transition cursor-pointer"
             >
               Join Now
             </button>
@@ -127,13 +127,16 @@ const Home = () => {
               <div className="flex flex-wrap gap-4">
                 <button
                   onClick={() => navigate("/signup")}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 transition hover:scale-105"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 transition hover:scale-105 cursor-pointer"
                 >
                   Get Started
                   <ArrowRight size={20} />
                 </button>
 
-                <button className="border border-slate-300 bg-white hover:bg-slate-100 px-8 py-4 rounded-2xl font-semibold transition">
+                <button
+                  onClick={() => navigate("/explore-events")}
+                  className="border border-slate-300 bg-white hover:bg-slate-100 px-8 py-4 rounded-2xl font-semibold transition cursor-pointer"
+                >
                   Explore Events
                 </button>
               </div>
@@ -383,7 +386,7 @@ const Home = () => {
 
           <button
             onClick={() => navigate("/signup")}
-            className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black hover:scale-105 transition"
+            className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black hover:scale-105 transition cursor-pointer shadow-sm shadow-white/50"
           >
             Join CampusConnect
           </button>

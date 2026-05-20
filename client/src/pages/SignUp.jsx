@@ -22,6 +22,7 @@ const Signup = () => {
   // =========================
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   // FORM DATA
   const [fullName, setFullName] = useState('');
@@ -162,24 +163,25 @@ const Signup = () => {
   // =========================
   // SUBMIT
   // =========================
-  const handleSubmit = (e) => {
-
-
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
     try {
       const signupData = {
-        fullName,
+        username: fullName,
         usn,
         email,
         password,
-      skills: selectedSkills,
-      interests: selectedInterests,
+       skills: selectedSkills,
+       interests: selectedInterests,
     };
     console.log(signupData);
-    const { data } = await axios.post('http://localhost:5000/api/auth/signup', signupData);
+    const { data } = await axios.post('http://localhost:8000/api/auth/signup', signupData);
+      setLoading(false);
+    navigate('/login');
     toast.success('Account Created Successfully!');
   } catch (err) {
+    setLoading(false);
     toast.error('Signup failed. Please try again.');
   }
   };
@@ -606,9 +608,11 @@ const Signup = () => {
 
                   <button
                     type="submit"
-                    className="w-2/3 bg-blue-500 text-white font-bold py-4 rounded-2xl hover:bg-blue-600 transition shadow-lg shadow-blue-200"
+                    disabled={loading}
+                    className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 transition-all hover:bg-blue-600 active:scale-[0.98]
+             disabled:bg-blue-400 disabled:cursor-not-allowed disabled:pointer-events-none disabled:scale-100 disabled:shadow-none"
                   >
-                    Create Account
+                    {loading? "Creating Account..." : "Create Account"}
                   </button>
 
                 </div>

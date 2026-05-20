@@ -18,7 +18,7 @@ app.get('/api/test', (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 const start=async()=>{
     const mongooseDB=await mongoose.connect(process.env.mongo_uri,);
     console.log("Connected to MongoDB Atlas successfully! 🎉");

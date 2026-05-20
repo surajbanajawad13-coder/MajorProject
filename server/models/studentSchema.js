@@ -45,7 +45,7 @@ const studentSchema=new mongoose.Schema({
         default: 'Applied'
     }
   }],
-  rregisteredEvents:[{
+  registeredEvents:[{
     type:mongoose.Schema.Types.ObjectId,
     ref:'Event'
   }]
