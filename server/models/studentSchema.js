@@ -26,7 +26,7 @@ const studentSchema=new mongoose.Schema({
   role: { 
     type: String, 
     default: 'Student',
-    enum: ['Student', 'Society Admin', 'Placement Officer'] 
+    enum: ['Student', 'Admin', 'Placement Officer'] 
   },
   // AI & Personalization Data
   skills:[{type:String}],
