@@ -1,10 +1,14 @@
+require('../models/eventSchema.js');
+require('../models/companySchema.js'); 
+
+
 const Student = require('../models/studentSchema.js');
 
 // 1. Get Complete Student Dashboard Data
 exports.getStudentDashboard = async (req, res) => {
   try {
     // req.user.id comes from your JWT Auth middleware
-    const student = await Student.findById(req.user.id)
+    const student = await Student.findById(req.userId)
       .select('-password') // Exclude password hash
       .populate('registeredEvents') // Fetch full event details
       .populate('appliedCompanies.companyId'); // Fetch full company details
@@ -12,7 +16,6 @@ exports.getStudentDashboard = async (req, res) => {
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
     }
-
     // Response structure tailored for React frontend UI components
     res.status(200).json({
       success: true,

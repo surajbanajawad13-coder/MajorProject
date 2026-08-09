@@ -10,11 +10,10 @@ const studentRoute=require('./routes/studentRoutes')
 const app = express();
 
 
-app.use(cors());
+app.use(cors("*"));
 app.use(express.json());
-
 app.use('/api/auth', authRoutes); 
-app.use('api/student',studentRoute)
+app.use('/api/student',studentRoute)
 app.get('/api/test', (req, res) => {
     res.send("CampusConnect Backend is running successfully! " );
 });

@@ -8,12 +8,11 @@ import {
   Award, 
   CheckCircle, 
   Clock, 
-  ExternalLink,
-  Plus,
   Tag,
-  LogOut
+  LogOut,
+  AlertCircle
 } from 'lucide-react';
-import axios from 'axios'; // Adjust relative path if needed
+import axios from 'axios'; 
 import { useAuth } from '../context/AuthContext';
 
 const StudentDashboard = () => {
@@ -25,12 +24,36 @@ const StudentDashboard = () => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const response = await axios.get('/student/dashboard');
-        if (response.data.success) {
+        // 1. Get the profile string from Local Storage
+        const profileString = localStorage.getItem('profile');
+        
+        // 2. Parse it and extract the token safely
+        const profileData = profileString ? JSON.parse(profileString) : null;
+        const token = profileData?.token; 
+
+        console.log("My Token is:", token); // This should now print your long JWT string!
+
+        if (!token) {
+          setError('No authentication token found. Please log in again.');
+          setLoading(false);
+          return; 
+        }
+
+        // 3. Make the request with the correctly extracted token
+        const response = await axios.get('http://localhost:8000/api/student/dashboard', {
+          headers: {
+            Authorization: `Bearer ${token}` 
+          }
+        });
+
+        if (response.data && response.data.success) {
           setDashboardData(response.data.data);
+        } else {
+          setError(response.data?.message || 'Failed to parse response data.');
         }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load dashboard data');
+        console.error('Dashboard Fetch Error:', err);
+        setError(err.response?.data?.message || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
@@ -39,31 +62,56 @@ const StudentDashboard = () => {
     fetchDashboard();
   }, []);
 
+  // 1. Loading State
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <p className="text-sm font-medium text-slate-600">Loading Dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  // 2. Error State (Graceful Fallback instead of crash)
+  if (error || !dashboardData) {
     return (
-      <div className="p-8 text-center text-red-600">
-        <p>{error}</p>
-        <button 
-          onClick={logout}
-          className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition"
-        >
-          Logout
-        </button>
+      <div className="min-h-screen bg-slate-50 p-8 flex flex-col items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-md w-full text-center space-y-4">
+          <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle size={28} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800">Dashboard Unavailable</h2>
+          <p className="text-sm text-slate-500">{error || 'Unable to fetch profile data.'}</p>
+          <div className="flex gap-3 justify-center pt-2">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+            >
+              Retry
+            </button>
+            <button 
+              onClick={logout}
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300 transition"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const { profile, stats, registeredEvents, appliedCompanies, trainingAttendance } = dashboardData;
+  // 3. Safe Destructuring (Guaranteed non-null at this point)
+  const { 
+    profile = {}, 
+    stats = { eventsCount: 0, appliedCompaniesCount: 0, trainingsAttendedCount: 0 }, 
+    registeredEvents = [], 
+    appliedCompanies = [], 
+    trainingAttendance = [] 
+  } = dashboardData;
 
-  // Status badge styling helper
   const getStatusBadge = (status) => {
     const styles = {
       Applied: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -77,56 +125,184 @@ const StudentDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 space-y-8">
       {/* Logout Navigation Bar */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <span className="font-bold text-slate-800 text-lg">CampusConnect</span>
-        <button 
-          onClick={logout} 
-          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition duration-200"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
+      {/* Navbar */}
+<div className="w-full bg-white border-b border-slate-100">
+  <div className="max-w-7xl mx-auto px-6 md:px-8 h-[76px] flex items-center justify-between">
+
+    {/* Logo */}
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-xl bg-[#2F80ED] flex items-center justify-center text-white font-bold text-xl shadow-sm">
+        C
       </div>
 
-      {/* 1. Header & Profile Summary Card */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+      <span className="text-xl font-bold text-[#172B4D] tracking-tight">
+        CampusConnect
+      </span>
+    </div>
+
+    {/* Navigation */}
+    <div className="hidden md:flex items-center gap-8">
+      <button className="text-sm text-[#2F80ED] font-semibold">
+        Dashboard
+      </button>
+
+      <button className="text-sm font-medium text-slate-500 hover:text-[#2F80ED] transition">
+        Sessions
+      </button>
+
+      <button className="text-sm font-medium text-slate-500 hover:text-[#2F80ED] transition">
+        Homework
+      </button>
+    </div>
+
+    {/* Profile + Logout */}
+    <div className="flex items-center gap-4">
+
+      <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-[#EAF3FF] text-[#2F80ED] font-bold">
+        {(profile?.username || user?.username || 'S')
+          .charAt(0)
+          .toUpperCase()}
+      </div>
+
+      <button
+        onClick={logout}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl
+                   border border-slate-200
+                   text-slate-600
+                   font-medium text-sm
+                   hover:border-[#2F80ED]
+                   hover:text-[#2F80ED]
+                   transition"
       >
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center text-2xl font-bold shadow-md shadow-indigo-100">
-            {(profile?.username || user?.username || 'S').charAt(0).toUpperCase()}
+        <LogOut size={17} />
+        <span className="hidden sm:block">Logout</span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+{/* Welcome Hero Section */}
+<motion.div
+  initial={{ opacity: 0, y: -20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.5 }}
+  className="relative overflow-hidden bg-white rounded-[28px] border border-slate-100 shadow-[0_10px_35px_rgba(47,128,237,0.07)] min-h-[270px] md:min-h-[290px]"
+>
+  {/* =====================================================
+      BACKGROUND DECORATION
+  ====================================================== */}
+
+  {/* Large soft blue circle */}
+  <div className="absolute -right-[120px] -top-[150px] w-[430px] h-[430px] rounded-full bg-[#EEF6FF]" />
+
+  {/* Bottom soft blue circle */}
+  <div className="absolute right-[20px] -bottom-[190px] w-[330px] h-[330px] rounded-full bg-[#F6FAFF]" />
+
+  {/* =====================================================
+      CONTENT
+  ====================================================== */}
+
+  <div className="relative z-10 min-h-[280px] md:min-h-[310px] flex items-center px-7 sm:px-10 md:px-12 lg:px-14 py-8">
+    
+    {/* =================================================
+        LEFT CONTENT
+    ================================================== */}
+
+    <div className="w-full md:w-[58%] lg:w-[60%] flex flex-col justify-center z-20">
+      {/* Welcome */}
+      <p className="text-sm md:text-base font-semibold text-[#2F80ED] mb-2">
+        Welcome back
+      </p>
+
+      {/* Name */}
+      <h1 className="text-3xl sm:text-4xl md:text-[42px] font-bold text-[#172B4D] tracking-tight leading-[1.1]">
+        {profile?.username || user?.username || 'Student'}!
+      </h1>
+
+      {/* Student Information */}
+      <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-3">
+        {/* USN */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-[#EAF3FF] text-[#2F80ED] flex items-center justify-center text-[11px] font-bold">
+            ID
           </div>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{profile?.username || user?.username}</h1>
-              <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-full border border-indigo-100">
-                {profile?.role || 'Student'}
-              </span>
-            </div>
-            <p className="text-sm text-slate-500 mt-1">
-              USN: <span className="font-semibold text-slate-700">{profile?.usn || 'N/A'}</span> | Email: {profile?.email || user?.email}
+            <p className="text-[10px] uppercase tracking-wide font-semibold text-slate-400">
+              USN
+            </p>
+            <p className="text-sm font-semibold text-[#172B4D] mt-0.5">
+              {profile?.usn || 'N/A'}
             </p>
           </div>
         </div>
 
-        {/* Quick Stats Banner */}
-        <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center min-w-[100px]">
-            <p className="text-2xl font-bold text-slate-900">{stats?.eventsCount || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Events Registered</p>
+        {/* Divider */}
+        <div className="hidden sm:block h-8 w-px bg-slate-200" />
+
+        {/* Email */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-[#EAF3FF] text-[#2F80ED] flex items-center justify-center text-sm font-bold">
+            @
           </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center min-w-[100px]">
-            <p className="text-2xl font-bold text-indigo-600">{stats?.appliedCompaniesCount || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Applications</p>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center min-w-[100px]">
-            <p className="text-2xl font-bold text-emerald-600">{stats?.trainingsAttendedCount || 0}</p>
-            <p className="text-xs text-slate-500 font-medium">Trainings Done</p>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide font-semibold text-slate-400">
+              Email
+            </p>
+            <p className="text-sm font-semibold text-[#172B4D] mt-0.5 max-w-[240px] truncate">
+              {profile?.email || user?.email}
+            </p>
           </div>
         </div>
-      </motion.div>
+
+        {/* Student Badge */}
+        <span className="px-3.5 py-1.5 rounded-full bg-[#EAF3FF] text-[#2F80ED] border border-[#D9EAFF] text-xs font-semibold">
+          {profile?.role || 'Student'}
+        </span>
+      </div>
+
+      {/* Description */}
+      <p className="mt-5 text-sm md:text-[15px] text-slate-500 max-w-[560px] leading-6">
+        Keep track of your academic journey, explore opportunities, and stay connected with everything happening on campus.
+      </p>
+    </div>
+
+    {/* =================================================
+        RIGHT ILLUSTRATION
+    ================================================== */}
+
+    <div className="absolute right-0 top-0 w-[43%] h-full hidden md:flex items-end justify-end overflow-hidden">
+      {/* Large blue illustration background */}
+      <div className="absolute right-[-85px] top-[-80px] w-[390px] h-[390px] rounded-full bg-[#EEF6FF]" />
+
+      {/* Yellow sun / circle */}
+      <div className="absolute right-[105px] bottom-[5px] w-[185px] h-[185px] rounded-full bg-[#FFF0B8] opacity-90" />
+
+      {/* Illustration */}
+      <img
+        src="/images/student_dashboard.png"
+        alt="Student learning illustration"
+        className="relative z-10 w-[230px] lg:w-[280px] xl:w-[310px] h-auto object-contain mr-[15px] mb-[-2px] drop-shadow-[0_15px_20px_rgba(47,128,237,0.10)]"
+      />
+
+      {/* =================================================
+          DECORATIVE DOTS
+      ================================================== */}
+
+      {/* Purple dot */}
+      <span className="absolute z-20 top-[55px] right-[115px] w-3 h-3 rounded-full bg-[#8B83F1]" />
+
+      {/* Light purple dot */}
+      <span className="absolute z-20 top-[75px] right-[70px] w-5 h-5 rounded-full bg-[#B7B2FA]" />
+
+      {/* Small blue dot */}
+      <span className="absolute z-20 bottom-[55px] right-[65px] w-2.5 h-2.5 rounded-full bg-[#2F80ED]" />
+    </div>
+
+  </div>
+</motion.div>
+
+
 
       {/* 2. Skills & Interests Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -142,7 +318,7 @@ const StudentDashboard = () => {
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            {profile?.skills && profile.skills.length > 0 ? (
+            {profile.skills && profile.skills.length > 0 ? (
               profile.skills.map((skill, index) => (
                 <span key={index} className="px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">
                   {skill}
@@ -166,7 +342,7 @@ const StudentDashboard = () => {
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            {profile?.interests && profile.interests.length > 0 ? (
+            {profile.interests && profile.interests.length > 0 ? (
               profile.interests.map((interest, index) => (
                 <span key={index} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg border border-indigo-100">
                   {interest}
@@ -179,9 +355,8 @@ const StudentDashboard = () => {
         </motion.div>
       </div>
 
-      {/* 3. Placement Application Tracker & Registered Events */}
+      {/* 3. Placement Application Tracker & Training Log */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Applied Companies Section (2 Cols) */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -192,7 +367,7 @@ const StudentDashboard = () => {
             <Briefcase className="w-5 h-5 text-indigo-600" /> Applied Companies
           </h2>
 
-          {appliedCompanies && appliedCompanies.length > 0 ? (
+          {appliedCompanies.length > 0 ? (
             <div className="space-y-4">
               {appliedCompanies.map((item, index) => (
                 <div 
@@ -220,7 +395,6 @@ const StudentDashboard = () => {
           )}
         </motion.div>
 
-        {/* Training & Placement Readiness Log (1 Col) */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -232,7 +406,7 @@ const StudentDashboard = () => {
           </h2>
 
           <div className="space-y-4">
-            {trainingAttendance && trainingAttendance.length > 0 ? (
+            {trainingAttendance.length > 0 ? (
               trainingAttendance.map((session, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-slate-100">
                   <div className="flex items-center gap-3">
@@ -258,7 +432,7 @@ const StudentDashboard = () => {
         </motion.div>
       </div>
 
-      {/* 4. Registered Technical Events Feed */}
+      {/* 4. Registered Events */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -269,7 +443,7 @@ const StudentDashboard = () => {
           <Calendar className="w-5 h-5 text-indigo-600" /> My Registered Events
         </h2>
 
-        {registeredEvents && registeredEvents.length > 0 ? (
+        {registeredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {registeredEvents.map((event) => (
               <div key={event._id} className="p-4 rounded-xl border border-slate-200 hover:shadow-md transition bg-white space-y-3">

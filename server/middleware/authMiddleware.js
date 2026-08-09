@@ -21,6 +21,7 @@ const verifyTokenAndRole = (allowedRoles) => {
 
       next();
     } catch (error) {
+      console.error("JWT Verification Error:", error.message);
       return res.status(401).json({ message: 'Unauthorized' });
     }
   };
