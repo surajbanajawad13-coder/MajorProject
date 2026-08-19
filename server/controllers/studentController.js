@@ -1,22 +1,24 @@
 require('../models/eventSchema.js');
-require('../models/companySchema.js'); 
-
+require('../models/companySchema.js');
 
 const Student = require('../models/studentSchema.js');
+const path = require('path');
+const fs = require('fs');
 
+// ─────────────────────────────────────────────
 // 1. Get Complete Student Dashboard Data
+// ─────────────────────────────────────────────
 exports.getStudentDashboard = async (req, res) => {
   try {
-    // req.user.id comes from your JWT Auth middleware
     const student = await Student.findById(req.userId)
-      .select('-password') // Exclude password hash
-      .populate('registeredEvents') // Fetch full event details
-      .populate('appliedCompanies.companyId'); // Fetch full company details
+      .select('-password')
+      .populate('registeredEvents')
+      .populate('appliedCompanies.companyId');
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
     }
-    // Response structure tailored for React frontend UI components
+
     res.status(200).json({
       success: true,
       data: {
@@ -26,45 +28,85 @@ exports.getStudentDashboard = async (req, res) => {
           usn: student.usn,
           role: student.role,
           skills: student.skills,
-          interests: student.interests
+          interests: student.interests,
+          resumeUrl: student.resumeUrl,
+          resumeOriginalName: student.resumeOriginalName,
         },
         stats: {
           eventsCount: student.registeredEvents.length,
           appliedCompaniesCount: student.appliedCompanies.length,
-          trainingsAttendedCount: student.trainingAttendance.filter(t => t.attended).length
+          trainingsAttendedCount: student.trainingAttendance.filter(t => t.attended).length,
         },
         registeredEvents: student.registeredEvents,
         appliedCompanies: student.appliedCompanies,
-        trainingAttendance: student.trainingAttendance
-      }
+        trainingAttendance: student.trainingAttendance,
+      },
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// 2. Update Student Skills & Interests (For AI Recommender setup)
+// ─────────────────────────────────────────────
+// 2. Update Student Profile
+//    Accepts multipart/form-data with optional resume file.
+//    Fields: skills (JSON array string), interests (JSON array string),
+//            username, email
+// ─────────────────────────────────────────────
 exports.updateStudentProfile = async (req, res) => {
   try {
-    const { skills, interests } = req.body;
+    const { skills, interests, username, email } = req.body;
+
+    // Parse skills / interests – they come as JSON strings from FormData
+    const parsedSkills    = skills    ? JSON.parse(skills).map(s => s.toLowerCase().trim())    : undefined;
+    const parsedInterests = interests ? JSON.parse(interests).map(i => i.toLowerCase().trim()) : undefined;
+
+    const updateFields = {};
+    if (parsedSkills    !== undefined) updateFields.skills    = parsedSkills;
+    if (parsedInterests !== undefined) updateFields.interests = parsedInterests;
+    if (username?.trim()) updateFields.username = username.trim();
+    if (email?.trim())    updateFields.email    = email.trim().toLowerCase();
+
+    // Handle resume upload
+    if (req.file) {
+      // Delete old resume file if it exists
+      const existing = await Student.findById(req.userId).select('resumeUrl');
+      if (existing?.resumeUrl) {
+        const oldPath = path.join(__dirname, '..', existing.resumeUrl);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      // Store path relative to server root (so we can serve it)
+      updateFields.resumeUrl          = `uploads/resumes/${req.file.filename}`;
+      updateFields.resumeOriginalName = req.file.originalname;
+    }
 
     const updatedStudent = await Student.findByIdAndUpdate(
-      req.user.id,
-      { 
-        $set: { 
-          skills: skills ? skills.map(s => s.toLowerCase().trim()) : [],
-          interests: interests ? interests.map(i => i.toLowerCase().trim()) : []
-        } 
-      },
-      { new: true }
+      req.userId,
+      { $set: updateFields },
+      { new: true, runValidators: true }
     ).select('-password');
+
+    if (!updatedStudent) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
 
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully!',
-      data: updatedStudent
+      data: {
+        username:           updatedStudent.username,
+        email:              updatedStudent.email,
+        usn:                updatedStudent.usn,
+        role:               updatedStudent.role,
+        skills:             updatedStudent.skills,
+        interests:          updatedStudent.interests,
+        resumeUrl:          updatedStudent.resumeUrl,
+        resumeOriginalName: updatedStudent.resumeOriginalName,
+      },
     });
   } catch (err) {
+    console.error('Update Profile Error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 };

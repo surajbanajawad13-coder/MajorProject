@@ -32,6 +32,10 @@ const studentSchema=new mongoose.Schema({
   skills:[{type:String}],
   interests:[{type:String}],
 
+  // Resume
+  resumeUrl: { type: String, default: null },
+  resumeOriginalName: { type: String, default: null },
+
   trainingAttendance: [{
     trainingType: { type: String, enum: ['Wednesday Session', '10-Day Bootcamp'] },
     date: Date,
