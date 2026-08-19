@@ -279,7 +279,7 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
           {tab === 'skills' && (
             <motion.div key="skills" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="pe-tab-content">
               <TagInput label="Technical Skills"   values={skills}    onChange={setSkills}    color="pe-tag-purple" />
-              <TagInput label="Domain Interests"   values={interests} onChange={setInterests} color="pe-tag-blue"   />
+              <TagInput label="Domain Interests"   values={interests} onChange= {setInterests} color="pe-tag-blue"   />
             </motion.div>
           )}
 
@@ -790,15 +790,19 @@ const MODAL_STYLES = `
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(4px);
   }
-  .pe-modal {
-    position: fixed; z-index: 999;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 92%; max-width: 500px;
-    border-radius: 24px;
-    display: flex; flex-direction: column;
-    max-height: 90vh; overflow: hidden;
-    font-family: 'Inter', sans-serif;
-  }
+  .sd-modal-portal {
+  position: fixed; inset: 0; z-index: 997; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+
+ .pe-modal {
+  position: relative; z-index: 999;
+  width: 92%; max-width: 500px;
+  border-radius: 24px;
+  display: flex; flex-direction: column;
+  max-height: 90vh; overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
   .sd-dark .pe-modal  { background: #131929; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 32px 80px rgba(0,0,0,0.6); }
   .sd-light .pe-modal { background: #ffffff;  border: 1px solid rgba(99,102,241,0.15); box-shadow: 0 32px 80px rgba(99,102,241,0.12); }
 
