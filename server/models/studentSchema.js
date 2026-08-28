@@ -49,6 +49,17 @@ const studentSchema=new mongoose.Schema({
         default: 'Applied'
     }
   }],
+  // Academic Filtering Data
+  cgpa: { 
+    type: Number, 
+    default: 0 
+  },
+  department: { 
+    type: String, 
+    enum: ['CSE', 'ISE', 'ECE', 'ME', 'CE','AIML','CSB','CSD'], // Adjust to match your exact branches
+    required: true,
+    default: 'CSE'
+  },
   registeredEvents:[{
     type:mongoose.Schema.Types.ObjectId,
     ref:'Event'

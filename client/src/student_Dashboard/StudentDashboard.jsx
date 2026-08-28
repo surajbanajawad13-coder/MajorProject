@@ -376,6 +376,7 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
+  const [availableDrives, setAvailableDrives] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -393,16 +394,23 @@ const StudentDashboard = () => {
     });
   };
 
-  const fetchDashboard = async () => {
+ const fetchDashboard = async () => {
     setLoading(true);
     try {
       const token = getToken();
-      if (!token) { setError('No authentication token found. Please log in again.'); setLoading(false); return; }
+      if (!token) { setError('No authentication token found.'); setLoading(false); return; }
+      
+      // Fetch Student Profile Data
       const response = await axios.get(`${API}/api/student/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data?.success) setDashboardData(response.data.data);
       else setError(response.data?.message || 'Failed to parse response data.');
+
+      // Fetch Available Company Drives
+      const drivesRes = await axios.get(`${API}/api/placements`);
+      if (drivesRes.data?.success) setAvailableDrives(drivesRes.data.data);
+
     } catch (err) {
       console.error('Dashboard Fetch Error:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data.');
@@ -658,11 +666,46 @@ const StudentDashboard = () => {
             {/* ════════ COMPANIES ════════ */}
             {activeTab === 'companies' && (
               <motion.div key="companies" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
-                <SectionHeader icon={Briefcase} title="Applied Companies" sub={`${appliedCompanies.length} application${appliedCompanies.length !== 1 ? 's' : ''}`} color="#f59e0b" />
+                
+                {/* Available Drives Section */}
+                <SectionHeader icon={Zap} title="New Opportunities" sub={`${availableDrives.length} active placement drives`} color="#6366f1" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                  {availableDrives.map((comp, idx) => (
+                    <motion.div key={comp._id || idx} className="sd-card" whileHover={{ translateY: -4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px' }}>
+                          {(comp.name || 'C').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-head)' }}>{comp.name}</h3>
+                          <p style={{ fontSize: '12px', color: 'var(--accent)' }}>{comp.jobRole}</p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', marginTop: '4px' }}>
+                        <p style={{ color: 'var(--text-sub)' }}><strong>Package:</strong> {comp.ctc}</p>
+                        <p style={{ color: 'var(--text-sub)' }}><strong>Eligibility:</strong> {comp.eligibilityCriteria?.cgpa || 0} CGPA</p>
+                        <p style={{ color: 'var(--text-sub)' }}><strong>Deadline:</strong> {new Date(comp.visitDate).toLocaleDateString()}</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                        {comp.jobDescription?.url && (
+                          <a href={`${API}/${comp.jobDescription.url}`} target="_blank" rel="noreferrer" className="sd-btn-ghost" style={{ flex: 1, textAlign: 'center', textDecoration: 'none', padding: '8px' }}>
+                            View JD
+                          </a>
+                        )}
+                        <button className="sd-btn-primary" style={{ flex: 1, padding: '8px' }}>
+                          Apply Now
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Applied Companies Section */}
+                <SectionHeader icon={Briefcase} title="My Applications" sub={`${appliedCompanies.length} tracked applications`} color="#f59e0b" />
                 {appliedCompanies.length > 0 ? (
                   <div className="sd-list">
                     {appliedCompanies.map((item, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="sd-list-item">
+                      <motion.div key={item._id || i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="sd-list-item">
                         <div className="sd-list-avatar" style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>{(item.companyId?.name || 'C').charAt(0)}</div>
                         <div className="sd-list-body">
                           <h4 className="sd-list-title">{item.companyId?.name || 'Company Drive'}</h4>
@@ -675,7 +718,6 @@ const StudentDashboard = () => {
                 ) : <EmptyCard text="You haven't applied to any companies yet." icon={Briefcase} />}
               </motion.div>
             )}
-
             {/* ════════ EVENTS ════════ */}
             {activeTab === 'events' && (
               <motion.div key="events" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">

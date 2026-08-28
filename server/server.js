@@ -5,6 +5,7 @@ const path = require('path');
 require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
 const studentRoute = require('./routes/studentRoutes');
+const placementRoutes = require('./routes/placementRoutes');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoute);
+app.use('/api/placements', placementRoutes);
 app.get('/api/test', (req, res) => {
     res.send("CampusConnect Backend is running successfully! " );
 });
