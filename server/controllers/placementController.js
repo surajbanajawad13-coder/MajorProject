@@ -20,7 +20,8 @@ exports.postNewDrive = async (req, res) => {
     let jobDescription = { url: '', filename: '' };
     if (req.file) {
       jobDescription = { 
-        url: req.file.path, // Uses local path (e.g., 'uploads/filename.pdf')
+        // Force a relative web path based on where your Multer saves it
+        url: `uploads/resumes/${req.file.filename}`, 
         filename: req.file.filename 
       };
     }
