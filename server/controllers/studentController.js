@@ -55,8 +55,7 @@ exports.getStudentDashboard = async (req, res) => {
 // ─────────────────────────────────────────────
 exports.updateStudentProfile = async (req, res) => {
   try {
-    const { skills, interests, username, email } = req.body;
-
+    const { username, email, skills, interests, cgpa, department } = req.body;
     // Parse skills / interests – they come as JSON strings from FormData
     const parsedSkills    = skills    ? JSON.parse(skills).map(s => s.toLowerCase().trim())    : undefined;
     const parsedInterests = interests ? JSON.parse(interests).map(i => i.toLowerCase().trim()) : undefined;
@@ -66,6 +65,8 @@ exports.updateStudentProfile = async (req, res) => {
     if (parsedInterests !== undefined) updateFields.interests = parsedInterests;
     if (username?.trim()) updateFields.username = username.trim();
     if (email?.trim())    updateFields.email    = email.trim().toLowerCase();
+    if (cgpa)              updateFields.cgpa     = parseFloat(cgpa);
+    if (department)        updateFields.department = department;
 
     // Handle resume upload
     if (req.file) {
@@ -103,6 +104,8 @@ exports.updateStudentProfile = async (req, res) => {
         interests:          updatedStudent.interests,
         resumeUrl:          updatedStudent.resumeUrl,
         resumeOriginalName: updatedStudent.resumeOriginalName,
+        cgpa:               updatedStudent.cgpa,
+        department:         updatedStudent.department,
       },
     });
   } catch (err) {

@@ -166,6 +166,8 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
   const [email, setEmail]       = useState(profile.email    || '');
   const [skills, setSkills]     = useState(profile.skills   || []);
   const [interests, setInterests] = useState(profile.interests || []);
+  const [cgpa, setCgpa]         = useState(profile.cgpa     || ''); // ADDED
+  const [department, setDepartment] = useState(profile.department || 'CSE'); // ADDED
   const [resumeFile, setResumeFile] = useState(null);
   const [saving, setSaving]     = useState(false);
   const [msg, setMsg]           = useState(null);   // { type:'success'|'error', text }
@@ -182,6 +184,8 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
       fd.append('email',     email.trim());
       fd.append('skills',    JSON.stringify(skills));
       fd.append('interests', JSON.stringify(interests));
+      fd.append('cgpa',      cgpa); // ADDED
+      fd.append('department', department); // ADDED
       if (resumeFile) fd.append('resume', resumeFile);
 
       const res = await axios.put(`${API}/api/student/profile`, fd, {
@@ -271,6 +275,22 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
               <div className="pe-field">
                 <label className="pe-label">Role</label>
                 <input className="pe-input pe-input-disabled" value={profile.role || 'Student'} disabled />
+              </div>
+              <div className="pe-field" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="pe-label">CGPA</label>
+                  <input className="pe-input" type="number" step="0.1" value={cgpa} onChange={e => setCgpa(e.target.value)} placeholder="e.g. 8.5" />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="pe-label">Branch</label>
+                  <select className="pe-input" value={department} onChange={e => setDepartment(e.target.value)}>
+                    <option value="CSE">CSE</option>
+                    <option value="ISE">ISE</option>
+                    <option value="ECE">ECE</option>
+                    <option value="ME">ME</option>
+                    <option value="CE">CE</option>
+                  </select>
+                </div>
               </div>
             </motion.div>
           )}
@@ -673,7 +693,7 @@ const StudentDashboard = () => {
                   {availableDrives.map((comp, idx) => (
                     <motion.div key={comp._id || idx} className="sd-card" whileHover={{ translateY: -4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px' }}>
+                        <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px' ,textAlign: 'center', lineHeight: '42px', color: '#fff'}}>
                           {(comp.name || 'C').charAt(0).toUpperCase()}
                         </div>
                         <div>
