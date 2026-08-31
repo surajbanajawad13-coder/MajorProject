@@ -113,3 +113,35 @@ exports.updateStudentProfile = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+exports.applyForDrive = async (req, res) => {
+  try {
+    
+    const studentId = req.userId; 
+    const { companyId } = req.body;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    // Check if the student has already applied
+    const alreadyApplied = student.appliedCompanies.some(
+      (app) => app.companyId.toString() === companyId
+    );
+
+    if (alreadyApplied) {
+      return res.status(400).json({ success: false, error: 'Already applied to this drive.' });
+    }
+
+    // Push the new application
+    student.appliedCompanies.push({ companyId, status: 'Applied' });
+    await student.save();
+
+    res.status(200).json({ success: true, message: 'Successfully applied for the drive!' });
+  } catch (error) {
+    console.error('Apply Error:', error);
+    res.status(500).json({ success: false, error: 'Server Error during application' });
+  }
+};

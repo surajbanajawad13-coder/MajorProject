@@ -20,4 +20,9 @@ router.put(
   studentController.updateStudentProfile
 );
 
+router.post(
+  '/apply',
+  verifyTokenAndRole(['Student']),
+  studentController.applyForDrive
+);
 module.exports = router;

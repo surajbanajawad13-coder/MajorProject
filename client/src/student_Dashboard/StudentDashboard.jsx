@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const API = 'http://localhost:8000';
 
@@ -93,10 +94,10 @@ const StatCard = ({ icon: Icon, label, value, gradient, delay }) => {
    Status badge
 ───────────────────────────────────────────── */
 const statusConfig = {
-  Applied:      { cls: 'sd-badge-blue',    dot: '#60a5fa' },
-  Interviewing: { cls: 'sd-badge-amber',   dot: '#fbbf24' },
-  Placed:       { cls: 'sd-badge-emerald', dot: '#34d399' },
-  Rejected:     { cls: 'sd-badge-rose',    dot: '#f87171' },
+  Applied: { cls: 'sd-badge-blue', dot: '#60a5fa' },
+  Interviewing: { cls: 'sd-badge-amber', dot: '#fbbf24' },
+  Placed: { cls: 'sd-badge-emerald', dot: '#34d399' },
+  Rejected: { cls: 'sd-badge-rose', dot: '#f87171' },
 };
 
 /* ─────────────────────────────────────────────
@@ -109,7 +110,7 @@ const ThemeToggle = ({ isDark, onToggle }) => (
         <AnimatePresence mode="wait">
           {isDark
             ? <motion.span key="moon" initial={{ rotate: -30, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 30, opacity: 0 }} transition={{ duration: 0.2 }}><Moon size={12} color="#818cf8" /></motion.span>
-            : <motion.span key="sun"  initial={{ rotate:  30, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -30, opacity: 0 }} transition={{ duration: 0.2 }}><Sun  size={12} color="#f59e0b" /></motion.span>
+            : <motion.span key="sun" initial={{ rotate: 30, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -30, opacity: 0 }} transition={{ duration: 0.2 }}><Sun size={12} color="#f59e0b" /></motion.span>
           }
         </AnimatePresence>
       </motion.div>
@@ -163,14 +164,14 @@ const TagInput = ({ label, values, onChange, color }) => {
 const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
   const [tab, setTab] = useState('info');          // 'info' | 'skills' | 'resume'
   const [username, setUsername] = useState(profile.username || '');
-  const [email, setEmail]       = useState(profile.email    || '');
-  const [skills, setSkills]     = useState(profile.skills   || []);
+  const [email, setEmail] = useState(profile.email || '');
+  const [skills, setSkills] = useState(profile.skills || []);
   const [interests, setInterests] = useState(profile.interests || []);
-  const [cgpa, setCgpa]         = useState(profile.cgpa     || ''); // ADDED
+  const [cgpa, setCgpa] = useState(profile.cgpa || ''); // ADDED
   const [department, setDepartment] = useState(profile.department || 'CSE'); // ADDED
   const [resumeFile, setResumeFile] = useState(null);
-  const [saving, setSaving]     = useState(false);
-  const [msg, setMsg]           = useState(null);   // { type:'success'|'error', text }
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);   // { type:'success'|'error', text }
   const fileRef = useRef();
   const theme = isDark ? 'sd-dark' : 'sd-light';
 
@@ -180,11 +181,11 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
     try {
       const token = getToken();
       const fd = new FormData();
-      fd.append('username',  username.trim());
-      fd.append('email',     email.trim());
-      fd.append('skills',    JSON.stringify(skills));
+      fd.append('username', username.trim());
+      fd.append('email', email.trim());
+      fd.append('skills', JSON.stringify(skills));
       fd.append('interests', JSON.stringify(interests));
-      fd.append('cgpa',      cgpa); // ADDED
+      fd.append('cgpa', cgpa); // ADDED
       fd.append('department', department); // ADDED
       if (resumeFile) fd.append('resume', resumeFile);
 
@@ -244,9 +245,9 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
         {/* Tabs */}
         <div className="pe-tabs">
           {[
-            { id: 'info',   label: 'Profile Info', icon: User     },
-            { id: 'skills', label: 'Skills',        icon: Tag      },
-            { id: 'resume', label: 'Resume',         icon: FileText },
+            { id: 'info', label: 'Profile Info', icon: User },
+            { id: 'skills', label: 'Skills', icon: Tag },
+            { id: 'resume', label: 'Resume', icon: FileText },
           ].map(({ id, label, icon: Icon }) => (
             <button key={id} className={`pe-tab ${tab === id ? 'pe-tab-active' : ''}`} onClick={() => setTab(id)}>
               <Icon size={14} />{label}
@@ -298,8 +299,8 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
           {/* ── Skills tab ── */}
           {tab === 'skills' && (
             <motion.div key="skills" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="pe-tab-content">
-              <TagInput label="Technical Skills"   values={skills}    onChange={setSkills}    color="pe-tag-purple" />
-              <TagInput label="Domain Interests"   values={interests} onChange= {setInterests} color="pe-tag-blue"   />
+              <TagInput label="Technical Skills" values={skills} onChange={setSkills} color="pe-tag-purple" />
+              <TagInput label="Domain Interests" values={interests} onChange={setInterests} color="pe-tag-blue" />
             </motion.div>
           )}
 
@@ -389,6 +390,22 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
     </AnimatePresence>
   );
 };
+const handleApply = async (companyId) => {
+  try {
+    const token = getToken();
+    const res = await axios.post(`${API}/api/student/apply`, { companyId }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (res.data.success) {
+      // Automatically refresh the dashboard so the drive moves to "My Applications"
+      fetchDashboard();
+      toast.success('Successfully applied!');
+    }
+  } catch (err) {
+    toast.error(err.response?.data?.error || 'Failed to apply.');
+  }
+};
 
 /* ─────────────────────────────────────────────
    Main Dashboard Component
@@ -397,8 +414,8 @@ const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [availableDrives, setAvailableDrives] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('sd-theme');
@@ -414,12 +431,12 @@ const StudentDashboard = () => {
     });
   };
 
- const fetchDashboard = async () => {
+  const fetchDashboard = async () => {
     setLoading(true);
     try {
       const token = getToken();
       if (!token) { setError('No authentication token found.'); setLoading(false); return; }
-      
+
       // Fetch Student Profile Data
       const response = await axios.get(`${API}/api/student/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -468,7 +485,7 @@ const StudentDashboard = () => {
         <p className="sd-error-msg">{error || 'Unable to fetch profile data.'}</p>
         <div className="sd-error-actions">
           <button onClick={fetchDashboard} className="sd-btn-primary">Retry</button>
-          <button onClick={logout}         className="sd-btn-ghost">Logout</button>
+          <button onClick={logout} className="sd-btn-ghost">Logout</button>
         </div>
       </motion.div>
     </div>
@@ -486,10 +503,10 @@ const StudentDashboard = () => {
   const username = profile?.username || user?.username || 'Student';
 
   const navItems = [
-    { id: 'overview',  label: 'Overview',  icon: LayoutDashboard },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'companies', label: 'Companies', icon: Briefcase },
-    { id: 'events',    label: 'Events',    icon: Calendar },
-    { id: 'training',  label: 'Training',  icon: Award },
+    { id: 'events', label: 'Events', icon: Calendar },
+    { id: 'training', label: 'Training', icon: Award },
   ];
 
   return (
@@ -612,9 +629,9 @@ const StudentDashboard = () => {
                 </div>
 
                 <div className="sd-stats-row">
-                  <StatCard icon={Calendar}  label="Events Joined"      value={stats.eventsCount || 0}            gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" delay={0.05} />
-                  <StatCard icon={Briefcase} label="Companies Applied"  value={stats.appliedCompaniesCount || 0}   gradient="linear-gradient(135deg,#0ea5e9,#06b6d4)"  delay={0.1}  />
-                  <StatCard icon={Activity}  label="Trainings Attended" value={stats.trainingsAttendedCount || 0}  gradient="linear-gradient(135deg,#10b981,#059669)"  delay={0.15} />
+                  <StatCard icon={Calendar} label="Events Joined" value={stats.eventsCount || 0} gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" delay={0.05} />
+                  <StatCard icon={Briefcase} label="Companies Applied" value={stats.appliedCompaniesCount || 0} gradient="linear-gradient(135deg,#0ea5e9,#06b6d4)" delay={0.1} />
+                  <StatCard icon={Activity} label="Trainings Attended" value={stats.trainingsAttendedCount || 0} gradient="linear-gradient(135deg,#10b981,#059669)" delay={0.15} />
                 </div>
 
                 <div className="sd-two-col">
@@ -686,14 +703,14 @@ const StudentDashboard = () => {
             {/* ════════ COMPANIES ════════ */}
             {activeTab === 'companies' && (
               <motion.div key="companies" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
-                
+
                 {/* Available Drives Section */}
                 <SectionHeader icon={Zap} title="New Opportunities" sub={`${availableDrives.length} active placement drives`} color="#6366f1" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                   {availableDrives.map((comp, idx) => (
                     <motion.div key={comp._id || idx} className="sd-card" whileHover={{ translateY: -4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px' ,textAlign: 'center', lineHeight: '42px', color: '#fff'}}>
+                        <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px', textAlign: 'center', lineHeight: '42px', color: '#fff' }}>
                           {(comp.name || 'C').charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -712,8 +729,18 @@ const StudentDashboard = () => {
                             View JD
                           </a>
                         )}
-                        <button className="sd-btn-primary" style={{ flex: 1, padding: '8px' }}>
-                          Apply Now
+                        <button
+                          className="sd-btn-primary"
+                          style={{
+                            flex: 1,
+                            padding: '8px',
+                            opacity: appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 0.6 : 1,
+                            cursor: appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'not-allowed' : 'pointer'
+                          }}
+                          onClick={() => handleApply(comp._id)}
+                          disabled={appliedCompanies.some(ac => ac.companyId?._id === comp._id)}
+                        >
+                          {appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'Applied ✓' : 'Apply Now'}
                         </button>
                       </div>
                     </motion.div>
@@ -807,7 +834,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 const EmptyState = ({ text }) => <div className="sd-empty-inline"><p>{text}</p></div>;
-const EmptyCard  = ({ text, icon: Icon }) => (
+const EmptyCard = ({ text, icon: Icon }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="sd-empty-card">
     <div className="sd-empty-icon"><Icon size={28} /></div>
     <p>{text}</p>
