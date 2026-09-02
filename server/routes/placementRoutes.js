@@ -36,4 +36,10 @@ router.put(
   placementController.updateApplicantStatus
 );
 
+router.get(
+  '/analytics/students',
+  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  placementController.getAllStudentsAnalytics
+);
+
 module.exports = router;

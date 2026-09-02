@@ -119,3 +119,33 @@ exports.updateApplicantStatus = async (req, res) => {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 };
+
+exports.getAllStudentsAnalytics = async (req, res) => {
+  try {
+    const students = await Student.find({ role: 'Student' })
+      .select('username email usn department cgpa appliedCompanies resumeUrl')
+      .populate('appliedCompanies.companyId', 'name jobRole');
+
+    const analyticsData = students.map(student => {
+      const totalApplied = student.appliedCompanies.length;
+      const isPlaced = student.appliedCompanies.some(app => app.status === 'Placed');
+      
+      return {
+        _id: student._id,
+        username: student.username,
+        email: student.email,
+        usn: student.usn,
+        department: student.department || 'N/A',
+        cgpa: student.cgpa || 0,
+        totalApplied,
+        status: isPlaced ? 'Placed' : totalApplied > 0 ? 'In Progress' : 'Unplaced',
+        resumeUrl: student.resumeUrl
+      };
+    });
+
+    res.status(200).json({ success: true, data: analyticsData });
+  } catch (error) {
+    console.error('Student Analytics Error:', error);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};

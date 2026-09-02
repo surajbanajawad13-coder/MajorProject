@@ -67,7 +67,7 @@ const ThemeToggle = ({ isDark, onToggle }) => (
         <AnimatePresence mode="wait">
           {isDark
             ? <motion.span key="moon" initial={{ rotate: -30, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 30, opacity: 0 }} transition={{ duration: 0.2 }}><Moon size={12} color="#818cf8" /></motion.span>
-            : <motion.span key="sun"  initial={{ rotate:  30, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -30, opacity: 0 }} transition={{ duration: 0.2 }}><Sun  size={12} color="#f59e0b" /></motion.span>
+            : <motion.span key="sun" initial={{ rotate: 30, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -30, opacity: 0 }} transition={{ duration: 0.2 }}><Sun size={12} color="#f59e0b" /></motion.span>
           }
         </AnimatePresence>
       </motion.div>
@@ -77,9 +77,9 @@ const ThemeToggle = ({ isDark, onToggle }) => (
 );
 
 const statusConfig = {
-  Upcoming: { cls: 'sd-badge-blue',    dot: '#60a5fa' },
-  Today:    { cls: 'sd-badge-emerald', dot: '#34d399' },
-  Visited:  { cls: 'sd-badge-default', dot: '#94a3b8' },
+  Upcoming: { cls: 'sd-badge-blue', dot: '#60a5fa' },
+  Today: { cls: 'sd-badge-emerald', dot: '#34d399' },
+  Visited: { cls: 'sd-badge-default', dot: '#94a3b8' },
 };
 
 const StatusBadge = ({ status }) => {
@@ -152,36 +152,36 @@ const PostDriveModal = ({ onClose, isDark, onDrivePosted }) => {
         <div className="pe-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="pe-field" style={{ gridColumn: 'span 2' }}>
             <label className="pe-label">Company Name</label>
-            <input className="pe-input" placeholder="e.g. TechNova" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            <input className="pe-input" placeholder="e.g. TechNova" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
           </div>
           <div className="pe-field">
             <label className="pe-label">Job Role</label>
-            <input className="pe-input" placeholder="Software Engineer" value={formData.jobRole} onChange={e => setFormData({...formData, jobRole: e.target.value})} />
+            <input className="pe-input" placeholder="Software Engineer" value={formData.jobRole} onChange={e => setFormData({ ...formData, jobRole: e.target.value })} />
           </div>
           <div className="pe-field">
             <label className="pe-label">Package (CTC)</label>
-            <input className="pe-input" placeholder="e.g. 8 LPA" value={formData.ctc} onChange={e => setFormData({...formData, ctc: e.target.value})} />
+            <input className="pe-input" placeholder="e.g. 8 LPA" value={formData.ctc} onChange={e => setFormData({ ...formData, ctc: e.target.value })} />
           </div>
           <div className="pe-field">
             <label className="pe-label">Date of Visit</label>
-            <input className="pe-input" type="date" value={formData.visitDate} onChange={e => setFormData({...formData, visitDate: e.target.value})} />
+            <input className="pe-input" type="date" value={formData.visitDate} onChange={e => setFormData({ ...formData, visitDate: e.target.value })} />
           </div>
           <div className="pe-field">
             <label className="pe-label">Minimum CGPA</label>
-            <input className="pe-input" type="number" step="0.1" placeholder="7.5" value={formData.cgpa} onChange={e => setFormData({...formData, cgpa: e.target.value})} />
+            <input className="pe-input" type="number" step="0.1" placeholder="7.5" value={formData.cgpa} onChange={e => setFormData({ ...formData, cgpa: e.target.value })} />
           </div>
           <div className="pe-field" style={{ gridColumn: 'span 2' }}>
             <label className="pe-label">Eligible Branches (Comma Separated)</label>
-            <input className="pe-input" placeholder="CSE, ISE, ECE" value={formData.branches} onChange={e => setFormData({...formData, branches: e.target.value})} />
+            <input className="pe-input" placeholder="CSE, ISE, ECE" value={formData.branches} onChange={e => setFormData({ ...formData, branches: e.target.value })} />
           </div>
           <div className="pe-field" style={{ gridColumn: 'span 2', marginTop: '8px' }}>
-             <label className="pe-label">Job Description (PDF)</label>
-             <div className={`pe-upload-zone ${jdFile ? 'pe-upload-filled' : ''}`} onClick={() => fileRef.current.click()}>
-                <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setJdFile(e.target.files[0])} />
-                <Upload size={24} className="pe-upload-icon" />
-                <p className="pe-upload-title">{jdFile ? jdFile.name : 'Upload JD Document'}</p>
-                <p className="pe-upload-sub">Click to browse • Max 5MB</p>
-             </div>
+            <label className="pe-label">Job Description (PDF)</label>
+            <div className={`pe-upload-zone ${jdFile ? 'pe-upload-filled' : ''}`} onClick={() => fileRef.current.click()}>
+              <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setJdFile(e.target.files[0])} />
+              <Upload size={24} className="pe-upload-icon" />
+              <p className="pe-upload-title">{jdFile ? jdFile.name : 'Upload JD Document'}</p>
+              <p className="pe-upload-sub">Click to browse • Max 5MB</p>
+            </div>
           </div>
         </div>
 
@@ -220,12 +220,12 @@ const ApplicantsModal = ({ company, onClose, isDark }) => {
     try {
       const profileString = localStorage.getItem('profile');
       const token = profileString ? JSON.parse(profileString).token : null;
-      
-      const res = await axios.put(`${API}/api/placements/${company._id}/applicant/${studentId}/status`, 
+
+      const res = await axios.put(`${API}/api/placements/${company._id}/applicant/${studentId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (res.data.success) {
         toast.success('Status updated');
         setApplicants(prev => prev.map(app => app._id === studentId ? { ...app, status: newStatus } : app));
@@ -239,7 +239,7 @@ const ApplicantsModal = ({ company, onClose, isDark }) => {
     <AnimatePresence>
       <motion.div className={`pe-backdrop ${theme}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
       <motion.div className={`pe-modal ${theme}`} initial={{ opacity: 0, scale: 0.92, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, y: 16 }} style={{ maxWidth: '800px' }}>
-        
+
         <div className="pe-header">
           <div className="pe-header-left">
             <div>
@@ -264,12 +264,12 @@ const ApplicantsModal = ({ company, onClose, isDark }) => {
                     <p style={{ fontSize: '12px', color: 'var(--text-sub)' }}>{app.department} | {app.cgpa} CGPA | {app.email}</p>
                     {app.resumeUrl && (
                       <a href={`${API}/${app.resumeUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-                         <FileText size={12}/> View Resume
+                        <FileText size={12} /> View Resume
                       </a>
                     )}
                   </div>
                   <div>
-                    <select 
+                    <select
                       value={app.status}
                       onChange={(e) => handleStatusChange(app._id, e.target.value)}
                       style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-head)', fontSize: '13px', outline: 'none', cursor: 'pointer' }}
@@ -297,6 +297,8 @@ const TPODashboard = () => {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [studentsList, setStudentsList] = useState([]);
+  const [studentFilter, setStudentFilter] = useState({ branch: '', minCgpa: 0 });
 
   const fetchCompanies = async () => {
     try {
@@ -308,9 +310,24 @@ const TPODashboard = () => {
       console.error('Fetch Companies Error:', err);
     }
   };
+  const fetchStudentsAnalytics = async () => {
+    try {
+      const profileString = localStorage.getItem('profile');
+      const token = profileString ? JSON.parse(profileString).token : null;
+      const res = await axios.get(`${API}/api/placements/analytics/students`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setStudentsList(res.data.data);
+      }
+    } catch (err) {
+      console.error('Fetch Students Error:', err);
+    }
+  };
 
   useEffect(() => {
     fetchCompanies();
+    fetchStudentsAnalytics();
   }, []);
 
   const toggleTheme = () => setIsDark(!isDark);
@@ -320,9 +337,9 @@ const TPODashboard = () => {
   const upcomingDrives = companies.filter(c => c.visitStatus === 'Upcoming' || !c.visitStatus).length;
 
   const navItems = [
-    { id: 'overview',  label: 'Overview',  icon: LayoutDashboard },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'companies', label: 'Company Drives', icon: Briefcase },
-    { id: 'students',  label: 'Student Analytics', icon: Users },
+    { id: 'students', label: 'Student Analytics', icon: Users },
   ];
 
   return (
@@ -377,7 +394,7 @@ const TPODashboard = () => {
 
         <div className="sd-content">
           <AnimatePresence mode="wait">
-            
+
             {/* OVERVIEW TAB */}
             {activeTab === 'overview' && (
               <motion.div key="overview" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
@@ -392,9 +409,9 @@ const TPODashboard = () => {
                 </div>
 
                 <div className="sd-stats-row">
-                  <StatCard icon={Building}  label="Total Drives"      value={totalDrives}       gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" delay={0.05} />
-                  <StatCard icon={Briefcase} label="Upcoming Visits"   value={upcomingDrives}    gradient="linear-gradient(135deg,#0ea5e9,#06b6d4)" delay={0.1} />
-                  <StatCard icon={Users}     label="Active Apps"       value={0}                 gradient="linear-gradient(135deg,#10b981,#059669)" delay={0.15} />
+                  <StatCard icon={Building} label="Total Drives" value={totalDrives} gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" delay={0.05} />
+                  <StatCard icon={Briefcase} label="Upcoming Visits" value={upcomingDrives} gradient="linear-gradient(135deg,#0ea5e9,#06b6d4)" delay={0.1} />
+                  <StatCard icon={Users} label="Active Apps" value={0} gradient="linear-gradient(135deg,#10b981,#059669)" delay={0.15} />
                 </div>
 
                 <div className="sd-two-col">
@@ -433,7 +450,7 @@ const TPODashboard = () => {
                       </div>
                     </div>
                     <button className="sd-logout-btn" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)', border: '1px dashed var(--accent)', marginBottom: '10px' }} onClick={() => setIsPostModalOpen(true)}>
-                      <Plus size={16}/> Post New Drive
+                      <Plus size={16} /> Post New Drive
                     </button>
                     <button className="sd-logout-btn" style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', border: '1px dashed rgba(245,158,11,0.4)' }}>
                       <Megaphone size={16} /> Broadcast Alert
@@ -511,18 +528,132 @@ const TPODashboard = () => {
               </motion.div>
             )}
 
-            {/* STUDENTS TAB */}
+            {/* STUDENTS ANALYTICS TAB */}
             {activeTab === 'students' && (
               <motion.div key="students" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
-                <div className="sd-card">
-                  <h3 className="sd-card-title">Student Placement Analytics</h3>
-                  <p className="sd-card-sub">Student registration and application filtering overview will be populated here.</p>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-head)' }}>Student Master Analytics</h2>
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Monitor student profiles, academic metrics, and placement tracks</p>
+                  </div>
                 </div>
+
+                {/* Filter Controls Row */}
+                <div style={{ display: 'flex', gap: '12px', background: 'var(--bg-card)', padding: '16px', borderRadius: '14px', border: '1px solid var(--border)', alignItems: 'center' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-sub)', textTransform: 'uppercase' }}>Filter by Branch</label>
+                    <select
+                      id="branch-filter"
+                      className="pe-input"
+                      style={{ padding: '8px 12px' }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setStudentFilter(prev => ({ ...prev, branch: val }));
+                      }}
+                    >
+                      <option value="">All Branches</option>
+                      <option value="CSE">CSE</option>
+                      <option value="ISE">ISE</option>
+                      <option value="ECE">ECE</option>
+                      <option value="ME">ME</option>
+                      <option value="CE">CE</option>
+                    </select>
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-sub)', textTransform: 'uppercase' }}>Minimum CGPA</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g. 7.0"
+                      className="pe-input"
+                      style={{ padding: '8px 12px' }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setStudentFilter(prev => ({ ...prev, minCgpa: val ? parseFloat(val) : 0 }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Master Table */}
+                <div className="sd-card" style={{ padding: '0', overflow: 'hidden' }}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card-hov)', color: 'var(--text-sub)', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                          <th style={{ padding: '14px 18px' }}>Name &amp; USN</th>
+                          <th style={{ padding: '14px 18px' }}>Department</th>
+                          <th style={{ padding: '14px 18px' }}>CGPA</th>
+                          <th style={{ padding: '14px 18px' }}>Applications</th>
+                          <th style={{ padding: '14px 18px' }}>Status</th>
+                          <th style={{ padding: '14px 18px' }}>Resume</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          // 1. Filter the list first and save it to a variable
+                          const filteredStudents = studentsList.filter(s => {
+                            const studentBranch = (s.department || '').trim();
+                            const filterBranch = (studentFilter.branch || '').trim();
+                            const matchBranch = filterBranch ? studentBranch === filterBranch : true;
+
+                            const studentCgpa = Number(s.cgpa) || 0;
+                            const matchCgpa = studentCgpa >= (Number(studentFilter.minCgpa) || 0);
+
+                            return matchBranch && matchCgpa;
+                          });
+
+                          // 2. If the filtered list is empty, show the "Zero matching" message
+                          if (filteredStudents.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: 'red', fontSize: '13px', fontWeight: '900' }}>
+                                  Zero matching students found
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          // 3. Otherwise, map and render the matching students
+                          return filteredStudents.map((student, idx) => (
+                            <tr key={student._id || idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '14px 18px' }}>
+                                <p style={{ fontWeight: '600', color: 'var(--text-head)' }}>{student.username}</p>
+                                <p style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{student.usn}</p>
+                              </td>
+                              <td style={{ padding: '14px 18px', color: 'var(--text-body)' }}>{student.department || 'N/A'}</td>
+                              <td style={{ padding: '14px 18px', fontWeight: '600', color: 'var(--text-head)' }}>{student.cgpa || 0}</td>
+                              <td style={{ padding: '14px 18px', color: 'var(--text-body)' }}>{student.totalApplied} Drives</td>
+                              <td style={{ padding: '14px 18px' }}>
+                                <span className={`sd-status-badge ${student.status === 'Placed' ? 'sd-badge-emerald' : student.status === 'In Progress' ? 'sd-badge-blue' : 'sd-badge-default'}`}>
+                                  {student.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px 18px' }}>
+                                {student.resumeUrl ? (
+                                  <a href={`${API}/${student.resumeUrl}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
+                                    View Resume
+                                  </a>
+                                ) : (
+                                  <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>Not Uploaded</span>
+                                )}
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+
+                    </table>
+                  </div>
+                </div>
+
               </motion.div>
             )}
             {selectedCompany && (
-  <ApplicantsModal company={selectedCompany} onClose={() => setSelectedCompany(null)} isDark={isDark} />
-)}
+              <ApplicantsModal company={selectedCompany} onClose={() => setSelectedCompany(null)} isDark={isDark} />
+            )}
           </AnimatePresence>
         </div>
       </main>
