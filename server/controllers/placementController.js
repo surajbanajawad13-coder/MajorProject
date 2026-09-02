@@ -67,3 +67,55 @@ exports.postNewDrive = async (req, res) => {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 };
+
+
+// Fetch all students who applied to a specific drive
+exports.getDriveApplicants = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // Find all students where appliedCompanies contains this companyId
+    const students = await Student.find({ 'appliedCompanies.companyId': companyId })
+      .select('username email usn department cgpa resumeUrl appliedCompanies');
+
+    // Map through students to extract just the status for this specific company
+    const applicants = students.map(student => {
+      const application = student.appliedCompanies.find(
+        app => app.companyId.toString() === companyId.toString()
+      );
+      return {
+        _id: student._id,
+        username: student.username,
+        email: student.email,
+        usn: student.usn,
+        department: student.department,
+        cgpa: student.cgpa,
+        resumeUrl: student.resumeUrl,
+        status: application ? application.status : 'Unknown'
+      };
+    });
+
+    res.status(200).json({ success: true, data: applicants });
+  } catch (error) {
+    console.error('Fetch Applicants Error:', error);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};
+
+// Update a student's status for a specific drive
+exports.updateApplicantStatus = async (req, res) => {
+  try {
+    const { companyId, studentId } = req.params;
+    const { status } = req.body; // 'Applied', 'Interviewing', 'Placed', 'Rejected'
+
+    await Student.findOneAndUpdate(
+      { _id: studentId, 'appliedCompanies.companyId': companyId },
+      { $set: { 'appliedCompanies.$.status': status } }
+    );
+
+    res.status(200).json({ success: true, message: 'Status updated successfully' });
+  } catch (error) {
+    console.error('Update Status Error:', error);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+};

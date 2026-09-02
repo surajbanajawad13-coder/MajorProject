@@ -193,6 +193,102 @@ const PostDriveModal = ({ onClose, isDark, onDrivePosted }) => {
     </AnimatePresence>
   );
 };
+const ApplicantsModal = ({ company, onClose, isDark }) => {
+  const [applicants, setApplicants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const theme = isDark ? 'sd-dark' : 'sd-light';
+
+  useEffect(() => {
+    const fetchApplicants = async () => {
+      try {
+        const profileString = localStorage.getItem('profile');
+        const token = profileString ? JSON.parse(profileString).token : null;
+        const res = await axios.get(`${API}/api/placements/${company._id}/applicants`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data.success) setApplicants(res.data.data);
+      } catch (err) {
+        toast.error('Failed to load applicants');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (company) fetchApplicants();
+  }, [company]);
+
+  const handleStatusChange = async (studentId, newStatus) => {
+    try {
+      const profileString = localStorage.getItem('profile');
+      const token = profileString ? JSON.parse(profileString).token : null;
+      
+      const res = await axios.put(`${API}/api/placements/${company._id}/applicant/${studentId}/status`, 
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (res.data.success) {
+        toast.success('Status updated');
+        setApplicants(prev => prev.map(app => app._id === studentId ? { ...app, status: newStatus } : app));
+      }
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div className={`pe-backdrop ${theme}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+      <motion.div className={`pe-modal ${theme}`} initial={{ opacity: 0, scale: 0.92, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, y: 16 }} style={{ maxWidth: '800px' }}>
+        
+        <div className="pe-header">
+          <div className="pe-header-left">
+            <div>
+              <h2 className="pe-title">{company?.name} Applicants</h2>
+              <p className="pe-subtitle">Manage student statuses for {company?.jobRole}</p>
+            </div>
+          </div>
+          <button className="pe-close" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div className="pe-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {loading ? (
+            <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Loading applicants...</p>
+          ) : applicants.length === 0 ? (
+            <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No students have applied yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {applicants.map(app => (
+                <div key={app._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-head)' }}>{app.username} ({app.usn})</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-sub)' }}>{app.department} | {app.cgpa} CGPA | {app.email}</p>
+                    {app.resumeUrl && (
+                      <a href={`${API}/${app.resumeUrl}`} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
+                         <FileText size={12}/> View Resume
+                      </a>
+                    )}
+                  </div>
+                  <div>
+                    <select 
+                      value={app.status}
+                      onChange={(e) => handleStatusChange(app._id, e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-head)', fontSize: '13px', outline: 'none', cursor: 'pointer' }}
+                    >
+                      <option value="Applied">Applied</option>
+                      <option value="Interviewing">Interviewing</option>
+                      <option value="Placed">Placed</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 const TPODashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -200,6 +296,7 @@ const TPODashboard = () => {
   const { logout } = useAuth();
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   const fetchCompanies = async () => {
     try {
@@ -401,6 +498,13 @@ const TPODashboard = () => {
                           <FileText size={14} /> View Job Description PDF
                         </a>
                       )}
+                      <button
+                        className="pe-btn-save"
+                        style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={() => setSelectedCompany(comp)}
+                      >
+                        <CheckCircle2 size={16} /> Manage Applicants
+                      </button>
                     </motion.div>
                   ))}
                 </div>
@@ -416,7 +520,9 @@ const TPODashboard = () => {
                 </div>
               </motion.div>
             )}
-
+            {selectedCompany && (
+  <ApplicantsModal company={selectedCompany} onClose={() => setSelectedCompany(null)} isDark={isDark} />
+)}
           </AnimatePresence>
         </div>
       </main>

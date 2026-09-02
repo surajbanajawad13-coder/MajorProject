@@ -11,8 +11,8 @@ const verifyTokenAndRole = (allowedRoles) => {
       const decodedData = jwt.verify(token, process.env.JWT_SECRET);
       
       // 3. Attach user data to the request object
-      req.userId = decodedData.id;
-      req.role = decodedData.role; 
+     req.userId = decodedData.id || decodedData._id;
+    req.role = decodedData.role;
 
       // 4. Check if the user's role is permitted
       if (!allowedRoles.includes(req.role)) {

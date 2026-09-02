@@ -22,5 +22,18 @@ router.get('/', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// GET /api/placements/:companyId/applicants
+router.get(
+  '/:companyId/applicants',
+  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  placementController.getDriveApplicants
+);
+
+// PUT /api/placements/:companyId/applicant/:studentId/status
+router.put(
+  '/:companyId/applicant/:studentId/status',
+  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  placementController.updateApplicantStatus
+);
 
 module.exports = router;

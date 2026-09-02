@@ -39,6 +39,7 @@ import toast from 'react-hot-toast';
 
 const API = 'http://localhost:8000';
 
+
 /* ─────────────────────────────────────────────
    Helper: get auth token
 ───────────────────────────────────────────── */
@@ -390,22 +391,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
     </AnimatePresence>
   );
 };
-const handleApply = async (companyId) => {
-  try {
-    const token = getToken();
-    const res = await axios.post(`${API}/api/student/apply`, { companyId }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    if (res.data.success) {
-      // Automatically refresh the dashboard so the drive moves to "My Applications"
-      fetchDashboard();
-      toast.success('Successfully applied!');
-    }
-  } catch (err) {
-    toast.error(err.response?.data?.error || 'Failed to apply.');
-  }
-};
 
 /* ─────────────────────────────────────────────
    Main Dashboard Component
@@ -422,6 +407,7 @@ const StudentDashboard = () => {
     return saved !== null ? saved === 'dark' : true;
   });
   const [showProfileModal, setShowProfileModal] = useState(false);
+const [applyingId, setApplyingId] = useState(null);
 
   const toggleTheme = () => {
     setIsDark(prev => {
@@ -467,6 +453,31 @@ const StudentDashboard = () => {
   };
 
   const theme = isDark ? 'sd-dark' : 'sd-light';
+  
+  const handleApply = async (companyId) => {
+  if (applyingId) return; // Prevent overlapping clicks
+  setApplyingId(companyId);
+
+  try {
+    const token = getToken();
+    const res = await axios.post(`${API}/api/student/apply`, { companyId }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (res.data && res.data.success) {
+      toast.success('Successfully applied!');
+      await fetchDashboard(); // Refresh UI instantly
+    }
+  } catch (err) {
+    console.error("Application Error Details:", err);
+    // Grabs the exact error message, or defaults to the network error message
+    const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to apply.';
+    toast.error(errorMessage);
+  } finally {
+    setApplyingId(null);
+  }
+};
+
 
   if (loading) return (
     <div className={`sd-loading-screen ${theme}`}>
@@ -738,9 +749,9 @@ const StudentDashboard = () => {
                             cursor: appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'not-allowed' : 'pointer'
                           }}
                           onClick={() => handleApply(comp._id)}
-                          disabled={appliedCompanies.some(ac => ac.companyId?._id === comp._id)}
+                          disabled={applyingId === comp._id || appliedCompanies.some(ac => ac.companyId?._id === comp._id)}
                         >
-                          {appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'Applied ✓' : 'Apply Now'}
+                          {applyingId === comp._id ? 'Applying...' : appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'Applied ✓' : 'Apply Now'}
                         </button>
                       </div>
                     </motion.div>
