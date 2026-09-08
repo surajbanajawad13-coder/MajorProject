@@ -22,7 +22,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'http://localhost:8000';
+const API = 'https://campusconnect-api-nele.onrender.com';
 
 function useCounter(target, duration = 1200) {
   const [count, setCount] = useState(0);

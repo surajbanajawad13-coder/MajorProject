@@ -176,7 +176,7 @@ const Signup = () => {
        interests: selectedInterests,
     };
     console.log(signupData);
-    const { data } = await axios.post('http://localhost:8000/api/auth/signup', signupData);
+    const { data } = await axios.post('https://campusconnect-api-nele.onrender.com/api/auth/signup', signupData);
       setLoading(false);
     navigate('/login');
     toast.success('Account Created Successfully!');

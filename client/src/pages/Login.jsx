@@ -26,7 +26,7 @@ const Login = () => {
     const loginData = { usn, password, role };
     setloading(true);
     try {
-        const { data } = await axios.post('http://localhost:8000/api/auth/login', loginData);
+        const { data } = await axios.post('https://campusconnect-api-nele.onrender.com/api/auth/login', loginData);
         login(data);
         setloading(false);
 

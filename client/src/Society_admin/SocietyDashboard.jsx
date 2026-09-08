@@ -49,7 +49,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'http://localhost:8000';
+const API = 'https://campusconnect-api-nele.onrender.com';
 
 function getToken() {
   const profileString = localStorage.getItem('profile');
