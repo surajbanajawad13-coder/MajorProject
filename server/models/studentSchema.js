@@ -26,11 +26,19 @@ const studentSchema=new mongoose.Schema({
   role: { 
     type: String, 
     default: 'Student',
-    enum: ['Student', 'Admin', 'Placement Officer'] 
+    enum: ['Student', 'Admin', 'Placement Officer', 'Society Admin'] 
   },
   // AI & Personalization Data
   skills:[{type:String}],
   interests:[{type:String}],
+  year: { type: String, default: '' }, // e.g. "1", "2", "3", "4" - used for eligibility scoring
+  certifications: [{ type: String }],  // free-text certification names, used for +1 pt scoring
+  projects: [
+    {
+      title: { type: String },
+      keywords: [{ type: String }], // technologies used, matched for +2 pt scoring
+    },
+  ],
 
   // Resume
   resumeUrl: { type: String, default: null },

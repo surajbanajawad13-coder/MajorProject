@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const placementController = require('../controllers/placementController');
+const { getMyPlacementMatchScores } = require('../controllers/recommendationController');
 const { verifyTokenAndRole } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
@@ -22,6 +23,18 @@ router.get('/', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// GET /api/placements/match-scores
+// Returns { companyId: { score, rank_label } } for the logged-in student,
+// so the "Apply" cards can show an AI match score. Placed above the
+// '/:companyId/applicants' route so 'match-scores' isn't swallowed as a
+// companyId param.
+router.get(
+  '/match-scores',
+  verifyTokenAndRole(['Student']),
+  getMyPlacementMatchScores
+);
+
 // GET /api/placements/:companyId/applicants
 router.get(
   '/:companyId/applicants',
@@ -34,12 +47,6 @@ router.put(
   '/:companyId/applicant/:studentId/status',
   verifyTokenAndRole(['Placement Officer', 'Admin']),
   placementController.updateApplicantStatus
-);
-
-router.get(
-  '/analytics/students',
-  verifyTokenAndRole(['Placement Officer', 'Admin']),
-  placementController.getAllStudentsAnalytics
 );
 
 module.exports = router;

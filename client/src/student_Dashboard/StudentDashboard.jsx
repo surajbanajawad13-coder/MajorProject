@@ -399,6 +399,10 @@ const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [availableDrives, setAvailableDrives] = useState([]);
+  const [matchScores, setMatchScores] = useState({}); // { companyId: { score, rank_label } }
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -434,6 +438,30 @@ const [applyingId, setApplyingId] = useState(null);
       const drivesRes = await axios.get(`${API}/api/placements`);
       if (drivesRes.data?.success) setAvailableDrives(drivesRes.data.data);
 
+      // Fetch AI match scores for each drive (non-blocking: if the AI
+      // service is briefly unavailable, cards just render without a badge)
+      try {
+        const scoresRes = await axios.get(`${API}/api/placements/match-scores`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (scoresRes.data?.success) setMatchScores(scoresRes.data.data || {});
+      } catch (scoreErr) {
+        console.warn('Match score fetch failed (non-fatal):', scoreErr.message);
+      }
+
+      // Fetch notifications (new placement drives, event confirmations, etc.)
+      try {
+        const notifRes = await axios.get(`${API}/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (notifRes.data?.success) {
+          setNotifications(notifRes.data.data || []);
+          setUnreadCount(notifRes.data.unreadCount || 0);
+        }
+      } catch (notifErr) {
+        console.warn('Notification fetch failed (non-fatal):', notifErr.message);
+      }
+
     } catch (err) {
       console.error('Dashboard Fetch Error:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data.');
@@ -454,6 +482,23 @@ const [applyingId, setApplyingId] = useState(null);
 
   const theme = isDark ? 'sd-dark' : 'sd-light';
   
+  const handleOpenNotifications = async () => {
+    setShowNotifications((prev) => !prev);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const token = getToken();
+      await axios.put(`${API}/api/notifications/read-all`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.warn('Failed to mark notifications as read:', err.message);
+    }
+  };
+
   const handleApply = async (companyId) => {
   if (applyingId) return; // Prevent overlapping clicks
   setApplyingId(companyId);
@@ -607,10 +652,40 @@ const [applyingId, setApplyingId] = useState(null);
             <button className="sd-topbar-bell" onClick={() => setShowProfileModal(true)} title="Edit Profile">
               <Edit3 size={16} />
             </button>
-            <button className="sd-topbar-bell">
-              <Bell size={18} />
-              <span className="sd-bell-dot" />
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button className="sd-topbar-bell" onClick={handleOpenNotifications}>
+                <Bell size={18} />
+                {unreadCount > 0 && <span className="sd-bell-dot" />}
+              </button>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="sd-notif-panel"
+                >
+                  <div className="sd-notif-header">
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <button className="sd-notif-mark-read" onClick={handleMarkAllRead}>Mark all read</button>
+                    )}
+                  </div>
+                  <div className="sd-notif-list">
+                    {notifications.length === 0 ? (
+                      <div className="sd-notif-empty">No notifications yet.</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div key={n._id} className={`sd-notif-item ${n.isRead ? '' : 'sd-notif-unread'}`}>
+                          <p className="sd-notif-title">{n.title}</p>
+                          <p className="sd-notif-message">{n.message}</p>
+                          <p className="sd-notif-time">{new Date(n.createdAt).toLocaleString()}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -720,15 +795,22 @@ const [applyingId, setApplyingId] = useState(null);
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                   {availableDrives.map((comp, idx) => (
                     <motion.div key={comp._id || idx} className="sd-card" whileHover={{ translateY: -4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px', textAlign: 'center', lineHeight: '42px', color: '#fff' }}>
-                          {(comp.name || 'C').charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-head)' }}>{comp.name}</h3>
-                          <p style={{ fontSize: '12px', color: 'var(--accent)' }}>{comp.jobRole}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', width: '42px', height: '42px', borderRadius: '12px', fontSize: '16px', textAlign: 'center', lineHeight: '42px', color: '#fff' }}>
+                            {(comp.name || 'C').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-head)' }}>{comp.name}</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--accent)' }}>{comp.jobRole}</p>
+                          </div>
                         </div>
                       </div>
+                      {matchScores[comp._id] && (
+                        <div style={{ marginTop: '2px' }}>
+                          <MatchBadge match={matchScores[comp._id]} />
+                        </div>
+                      )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', marginTop: '4px' }}>
                         <p style={{ color: 'var(--text-sub)' }}><strong>Package:</strong> {comp.ctc}</p>
                         <p style={{ color: 'var(--text-sub)' }}><strong>Eligibility:</strong> {comp.eligibilityCriteria?.cgpa || 0} CGPA</p>
@@ -845,6 +927,23 @@ const StatusBadge = ({ status }) => {
   );
 };
 const EmptyState = ({ text }) => <div className="sd-empty-inline"><p>{text}</p></div>;
+
+// Shows the AI recommendation score on a placement card, e.g. "18 pts · Highly Recommended"
+const matchRankConfig = {
+  'highly recommended': { cls: 'sd-match-high', label: 'Highly Recommended' },
+  'recommended': { cls: 'sd-match-mid', label: 'Recommended' },
+  'low priority': { cls: 'sd-match-low', label: 'Low Priority' },
+};
+const MatchBadge = ({ match }) => {
+  if (!match) return null;
+  const cfg = matchRankConfig[match.rank_label] || { cls: 'sd-match-low', label: match.rank_label };
+  return (
+    <span className={`sd-match-badge ${cfg.cls}`} title="AI-computed match score based on your skills, interests, and eligibility">
+      <Star size={11} /> {match.score} pts · {cfg.label}
+    </span>
+  );
+};
+
 const EmptyCard = ({ text, icon: Icon }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="sd-empty-card">
     <div className="sd-empty-icon"><Icon size={28} /></div>
@@ -1272,6 +1371,28 @@ const STYLES = `
     50%       { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
   }
 
+  /* Notification dropdown */
+  .sd-notif-panel {
+    position: absolute; top: 46px; right: 0; width: 320px; max-height: 400px;
+    background: var(--bg-sidebar, var(--bg-card)); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.25); z-index: 50;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sd-notif-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 700; color: var(--text-head);
+  }
+  .sd-notif-mark-read { background: none; border: none; color: var(--accent-text); font-size: 11px; font-weight: 600; cursor: pointer; }
+  .sd-notif-list { overflow-y: auto; max-height: 340px; }
+  .sd-notif-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
+  .sd-notif-item { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .sd-notif-item:last-child { border-bottom: none; }
+  .sd-notif-unread { background: var(--accent-soft); }
+  .sd-notif-title { font-size: 12.5px; font-weight: 700; color: var(--text-head); margin-bottom: 2px; }
+  .sd-notif-message { font-size: 11.5px; color: var(--text-sub); line-height: 1.4; }
+  .sd-notif-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
   .sd-content { flex: 1; padding: 28px 32px; overflow-y: auto; }
   .sd-section { display: flex; flex-direction: column; gap: 22px; }
 
@@ -1420,6 +1541,19 @@ const STYLES = `
   .sd-dark .sd-badge-amber   { color: #fcd34d; }
   .sd-dark .sd-badge-emerald { color: #6ee7b7; }
   .sd-dark .sd-badge-rose    { color: #fca5a5; }
+
+  /* AI match score badges (placement cards) */
+  .sd-match-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 99px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .sd-match-high { background: rgba(52,211,153,0.12); color: #059669; border: 1px solid rgba(52,211,153,0.3); }
+  .sd-match-mid  { background: rgba(99,102,241,0.12);  color: var(--accent-text); border: 1px solid rgba(99,102,241,0.3); }
+  .sd-match-low  { background: rgba(148,163,184,0.1);  color: #64748b; border: 1px solid rgba(148,163,184,0.25); }
+  .sd-dark .sd-match-high { color: #6ee7b7; }
+  .sd-dark .sd-match-mid  { color: #a5b4fc; }
+  .sd-dark .sd-match-low  { color: #94a3b8; }
 
   /* Training */
   .sd-training-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }

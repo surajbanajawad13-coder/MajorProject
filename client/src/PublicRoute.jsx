@@ -9,6 +9,7 @@ export default function PublicRoute({ children }) {
         if(user.result.role ==='Student') return <Navigate to={"/student_dashboard"} />
         else if(user.result.role === 'Placement Officer') return <Navigate to={"/tpo-admin"} />
         else if(user.result.role === 'Society Admin') return <Navigate to={"/society-admin"} />
+        else if(user.result.role === 'Admin') return <Navigate to={"/admin"} />
     }
   return children;
 }

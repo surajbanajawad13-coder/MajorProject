@@ -1,6 +1,13 @@
 const Company = require('../models/companySchema');
 const Student = require('../models/studentSchema');
+const Notification = require('../models/notificationSchema');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
+const {
+  buildProfilePayload,
+  buildPlacementPayload,
+  AI_SERVICE_URL,
+} = require('./recommendationController');
 
 // Configure Nodemailer
 const transporter = nodemailer.createTransport({
@@ -43,22 +50,82 @@ exports.postNewDrive = async (req, res) => {
       department: { $in: branchArray }
     });
 
-    // 4. Broadcast Alert
+    // 4. Broadcast Alert — personalized per student with their AI match score,
+    //    instead of the same generic message to everyone.
     if (eligibleStudents.length > 0) {
-      const studentEmails = eligibleStudents.map(student => student.email);
+      const placementPayload = buildPlacementPayload(newCompany);
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: studentEmails, 
-        subject: `New Placement Drive: ${name} is hiring!`,
-        html: `
-          <h2>${name} is visiting the campus!</h2>
-          <p><strong>Role:</strong> ${jobRole}</p>
-          <p><strong>Package:</strong> ${ctc}</p>
-          <p><strong>Eligibility:</strong> ${cgpa} CGPA and above</p>
-          <p>Log into your CampusConnect dashboard to apply.</p>
-        `
-      });
+      // Score every eligible student against this one drive. Done with
+      // Promise.allSettled so one failed AI call can't take down the
+      // whole broadcast for everyone else.
+      const scoredStudents = await Promise.allSettled(
+        eligibleStudents.map(async (student) => {
+          try {
+            const { data } = await axios.post(
+              `${AI_SERVICE_URL}/recommend`,
+              {
+                profile: buildProfilePayload(student),
+                resume: null,
+                events: [],
+                placements: [placementPayload],
+              },
+              { timeout: 10000 }
+            );
+            const result = data.placements?.[0];
+            return {
+              student,
+              score: result?.score ?? null,
+              rankLabel: result?.rank_label ?? null,
+            };
+          } catch (scoreErr) {
+            console.error(`Match score failed for ${student.email}:`, scoreErr.message);
+            return { student, score: null, rankLabel: null };
+          }
+        })
+      );
+
+      const results = scoredStudents.map((r) => r.value);
+
+      // Email is best-effort: if SMTP isn't configured or fails, we still
+      // want the drive to be created and in-app notifications to go out.
+      // Sent as individual emails (not one bulk "to" list) so each
+      // student's match score line is personal to them.
+      for (const { student, score, rankLabel } of results) {
+        const matchLine = score !== null
+          ? `<p><strong>Your AI Match Score:</strong> ${score} pts — ${rankLabel}</p>`
+          : '';
+        try {
+          await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: student.email,
+            subject: `New Placement Drive: ${name} is hiring!`,
+            html: `
+              <h2>${name} is visiting the campus!</h2>
+              <p><strong>Role:</strong> ${jobRole}</p>
+              <p><strong>Package:</strong> ${ctc}</p>
+              <p><strong>Eligibility:</strong> ${cgpa} CGPA and above</p>
+              ${matchLine}
+              <p>Log into your CampusConnect dashboard to apply.</p>
+            `,
+          });
+        } catch (mailErr) {
+          console.error(`Placement email failed for ${student.email} (non-fatal):`, mailErr.message);
+        }
+      }
+
+      // In-app notification (bell icon), also personalized with the score.
+      const notificationDocs = results.map(({ student, score, rankLabel }) => ({
+        user: student._id,
+        title: `New placement drive: ${name}`,
+        message:
+          score !== null
+            ? `${name} is hiring for ${jobRole} (${ctc}). Your match score: ${score} pts (${rankLabel}).`
+            : `${name} is hiring for ${jobRole} (${ctc}). You meet the eligibility criteria — check it out!`,
+        type: 'placement',
+        relatedModel: 'Company',
+        relatedId: newCompany._id,
+      }));
+      await Notification.insertMany(notificationDocs);
     }
 
     res.status(201).json({ success: true, data: newCompany });
@@ -116,36 +183,6 @@ exports.updateApplicantStatus = async (req, res) => {
     res.status(200).json({ success: true, message: 'Status updated successfully' });
   } catch (error) {
     console.error('Update Status Error:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
-};
-
-exports.getAllStudentsAnalytics = async (req, res) => {
-  try {
-    const students = await Student.find({ role: 'Student' })
-      .select('username email usn department cgpa appliedCompanies resumeUrl')
-      .populate('appliedCompanies.companyId', 'name jobRole');
-
-    const analyticsData = students.map(student => {
-      const totalApplied = student.appliedCompanies.length;
-      const isPlaced = student.appliedCompanies.some(app => app.status === 'Placed');
-      
-      return {
-        _id: student._id,
-        username: student.username,
-        email: student.email,
-        usn: student.usn,
-        department: student.department || 'N/A',
-        cgpa: student.cgpa || 0,
-        totalApplied,
-        status: isPlaced ? 'Placed' : totalApplied > 0 ? 'In Progress' : 'Unplaced',
-        resumeUrl: student.resumeUrl
-      };
-    });
-
-    res.status(200).json({ success: true, data: analyticsData });
-  } catch (error) {
-    console.error('Student Analytics Error:', error);
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 };

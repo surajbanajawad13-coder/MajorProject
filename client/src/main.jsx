@@ -10,6 +10,7 @@ import { Toaster } from "react-hot-toast";
 import StudentDashboard from './student_Dashboard/StudentDashboard.jsx'
 import SocietyDashboard from './Society_admin/SocietyDashboard.jsx'
 import TPODashboard from './TPO_admin/TPODashboard.jsx'
+import AdminDashboard from './Admin_dashboard/AdminDashboard.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import  ProtectedRoute  from './ProtectedRoute.jsx';
 import PublicRoute from './PublicRoute.jsx'
@@ -88,6 +89,17 @@ createRoot(document.getElementById('root')).render(
             allowedRole="Placement Officer"
           >
             <TPODashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute
+            allowedRole="Admin"
+          >
+            <AdminDashboard />
           </ProtectedRoute>
         }
       />

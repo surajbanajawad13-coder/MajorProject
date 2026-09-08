@@ -33,6 +33,7 @@ const Login = () => {
         if(data.result.role === 'Student') navigate('/student_dashboard');
         else if(data.result.role === 'Placement Officer') navigate('/tpo-admin');
         else if(data.result.role === 'Society Admin') navigate('/society-admin');
+        else if(data.result.role === 'Admin') navigate('/admin');
     } catch (err) {
         setloading(false);
         toast.error(err.response?.data?.message || "Login failed. Please try again.");
@@ -100,8 +101,8 @@ const Login = () => {
               >
                 <option value="Student">Student</option>
                 <option value="Placement Officer">Placement Officer (TPO)</option>
-                <option value="Department Faculty">Department Faculty</option>
-                <option value="Event Coordinator">Event Coordinator</option>
+                <option value="Society Admin">Society Admin</option>
+                <option value="Admin">Administrator</option>
               </select>
             </div>
 
