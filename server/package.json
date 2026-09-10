@@ -27,6 +27,6 @@
     "mongoose": "^9.2.2",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.6",
-    "resend": "^6.24.0"
+    "resend": "^6.27.0"
   }
 }

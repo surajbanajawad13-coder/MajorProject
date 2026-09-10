@@ -1,22 +1,9 @@
 const Company = require('../models/companySchema');
 const Student = require('../models/studentSchema');
 const Notification = require('../models/notificationSchema');
-const nodemailer = require('nodemailer');
-const axios = require('axios');
-const {
-  buildProfilePayload,
-  buildPlacementPayload,
-  AI_SERVICE_URL,
-} = require('./recommendationController');
+const { Resend } = require('resend');
 
-// Configure Nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 exports.postNewDrive = async (req, res) => {
   try {
@@ -95,19 +82,25 @@ exports.postNewDrive = async (req, res) => {
           ? `<p><strong>Your AI Match Score:</strong> ${score} pts — ${rankLabel}</p>`
           : '';
         try {
-          await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: student.email,
-            subject: `New Placement Drive: ${name} is hiring!`,
-            html: `
-              <h2>${name} is visiting the campus!</h2>
-              <p><strong>Role:</strong> ${jobRole}</p>
-              <p><strong>Package:</strong> ${ctc}</p>
-              <p><strong>Eligibility:</strong> ${cgpa} CGPA and above</p>
-              ${matchLine}
-              <p>Log into your CampusConnect dashboard to apply.</p>
-            `,
-          });
+          const { data, error } = await resend.emails.send({
+  from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+  to: student.email,
+  subject: `New Placement Drive: ${name} is hiring!`,
+  html: `
+    <h2>${name} is visiting the campus!</h2>
+    <p><strong>Role:</strong> ${jobRole}</p>
+    <p><strong>Package:</strong> ${ctc}</p>
+    <p><strong>Eligibility:</strong> ${cgpa} CGPA and above</p>
+    ${matchLine}
+    <p>Log into your CampusConnect dashboard to apply.</p>
+  `,
+});
+
+if (error) {
+  throw new Error(error.message);
+}
+
+console.log(`Placement email sent to ${student.email}:`, data?.id);
         } catch (mailErr) {
           console.error(`Placement email failed for ${student.email} (non-fatal):`, mailErr.message);
         }
