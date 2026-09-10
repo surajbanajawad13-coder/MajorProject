@@ -1,6 +1,13 @@
 const Company = require('../models/companySchema');
 const Student = require('../models/studentSchema');
 const Notification = require('../models/notificationSchema');
+const axios = require('axios');
+
+const {
+  buildProfilePayload,
+  buildPlacementPayload,
+  AI_SERVICE_URL
+} = require('./recommendationController');
 const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
