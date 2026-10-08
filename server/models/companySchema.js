@@ -21,10 +21,7 @@ const companySchema = new mongoose.Schema({
     branches: [String] 
   },
 
-  // ── Fields consumed by the AI recommendation engine (ai/recommender.py) ──
-  required_skills: [{ type: String }], // matched against learner skills (+3 pt each)
-  domain: { type: String, default: '' },
-  category: { type: String, default: '' },
+  targetDepartment: { type: [String], default: ['All'] },
 
 
   visitDate: { 

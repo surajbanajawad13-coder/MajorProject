@@ -36,9 +36,9 @@ import {
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 
 const API = 'https://campusconnect-api-nele.onrender.com';
-
 
 /* ─────────────────────────────────────────────
    Helper: get auth token
@@ -163,16 +163,16 @@ const TagInput = ({ label, values, onChange, color }) => {
    Profile Edit Modal
 ───────────────────────────────────────────── */
 const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
-  const [tab, setTab] = useState('info');          // 'info' | 'skills' | 'resume'
+  const [tab, setTab] = useState('info');
   const [username, setUsername] = useState(profile.username || '');
   const [email, setEmail] = useState(profile.email || '');
   const [skills, setSkills] = useState(profile.skills || []);
   const [interests, setInterests] = useState(profile.interests || []);
-  const [cgpa, setCgpa] = useState(profile.cgpa || ''); // ADDED
-  const [department, setDepartment] = useState(profile.department || 'CSE'); // ADDED
+  const [cgpa, setCgpa] = useState(profile.cgpa || '');
+  const [department, setDepartment] = useState(profile.department || 'CSE');
   const [resumeFile, setResumeFile] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);   // { type:'success'|'error', text }
+  const [msg, setMsg] = useState(null);
   const fileRef = useRef();
   const theme = isDark ? 'sd-dark' : 'sd-light';
 
@@ -186,13 +186,12 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
       fd.append('email', email.trim());
       fd.append('skills', JSON.stringify(skills));
       fd.append('interests', JSON.stringify(interests));
-      fd.append('cgpa', cgpa); // ADDED
-      fd.append('department', department); // ADDED
+      fd.append('cgpa', cgpa);
+      fd.append('department', department);
       if (resumeFile) fd.append('resume', resumeFile);
 
       const res = await axios.put(`${API}/api/student/profile`, fd, {
         headers: { Authorization: `Bearer ${token}` },
-        // Let axios set content-type automatically for FormData
       });
 
       if (res.data?.success) {
@@ -213,7 +212,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
 
   return (
     <AnimatePresence>
-      {/* Backdrop */}
       <motion.div
         className={`pe-backdrop ${theme}`}
         initial={{ opacity: 0 }}
@@ -221,7 +219,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
         exit={{ opacity: 0 }}
         onClick={onClose}
       />
-      {/* Modal */}
       <motion.div
         className={`pe-modal ${theme}`}
         initial={{ opacity: 0, scale: 0.92, y: 16 }}
@@ -231,7 +228,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
       >
         <style>{MODAL_STYLES}</style>
 
-        {/* Header */}
         <div className="pe-header">
           <div className="pe-header-left">
             <div className="pe-avatar-big">{(username || 'S').charAt(0).toUpperCase()}</div>
@@ -243,7 +239,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
           <button className="pe-close" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* Tabs */}
         <div className="pe-tabs">
           {[
             { id: 'info', label: 'Profile Info', icon: User },
@@ -256,9 +251,7 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
           ))}
         </div>
 
-        {/* Body */}
         <div className="pe-body">
-          {/* ── Info tab ── */}
           {tab === 'info' && (
             <motion.div key="info" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="pe-tab-content">
               <div className="pe-field">
@@ -291,13 +284,15 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
                     <option value="ECE">ECE</option>
                     <option value="ME">ME</option>
                     <option value="CE">CE</option>
+                    <option value="AIML">AIML</option>
+                    <option value="CSB">CSB</option>
+                    <option value="CSD">CSD</option>
                   </select>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* ── Skills tab ── */}
           {tab === 'skills' && (
             <motion.div key="skills" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="pe-tab-content">
               <TagInput label="Technical Skills" values={skills} onChange={setSkills} color="pe-tag-purple" />
@@ -305,10 +300,8 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
             </motion.div>
           )}
 
-          {/* ── Resume tab ── */}
           {tab === 'resume' && (
             <motion.div key="resume" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="pe-tab-content">
-              {/* Current resume */}
               {hasResume && !resumeFile && (
                 <div className="pe-resume-current">
                   <div className="pe-resume-icon"><FileText size={22} /></div>
@@ -328,7 +321,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
                 </div>
               )}
 
-              {/* New file selected preview */}
               {resumeFile && (
                 <div className="pe-resume-current pe-resume-new">
                   <div className="pe-resume-icon"><FileText size={22} /></div>
@@ -340,7 +332,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
                 </div>
               )}
 
-              {/* Upload zone */}
               <div
                 className={`pe-upload-zone ${resumeFile ? 'pe-upload-filled' : ''}`}
                 onClick={() => fileRef.current.click()}
@@ -366,7 +357,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
           )}
         </div>
 
-        {/* Feedback message */}
         <AnimatePresence>
           {msg && (
             <motion.div
@@ -380,7 +370,6 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
           )}
         </AnimatePresence>
 
-        {/* Footer */}
         <div className="pe-footer">
           <button className="pe-btn-cancel" onClick={onClose}>Cancel</button>
           <button className="pe-btn-save" onClick={handleSave} disabled={saving}>
@@ -397,6 +386,7 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
 ───────────────────────────────────────────── */
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [dashboardData, setDashboardData] = useState(null);
   const [availableDrives, setAvailableDrives] = useState([]);
   const [matchScores, setMatchScores] = useState({}); // { companyId: { score, rank_label } }
@@ -405,13 +395,17 @@ const StudentDashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(location.state?.openEvents ? 'programs' : 'overview');
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('sd-theme');
     return saved !== null ? saved === 'dark' : true;
   });
   const [showProfileModal, setShowProfileModal] = useState(false);
-const [applyingId, setApplyingId] = useState(null);
+  const [applyingId, setApplyingId] = useState(null);
+  const [broadcasts, setBroadcasts] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [eventTrainingPrograms, setEventTrainingPrograms] = useState([]);
+  const [registeringProgramId, setRegisteringProgramId] = useState(null);
 
   const toggleTheme = () => {
     setIsDark(prev => {
@@ -427,39 +421,22 @@ const [applyingId, setApplyingId] = useState(null);
       const token = getToken();
       if (!token) { setError('No authentication token found.'); setLoading(false); return; }
 
-      // Fetch Student Profile Data
       const response = await axios.get(`${API}/api/student/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data?.success) setDashboardData(response.data.data);
       else setError(response.data?.message || 'Failed to parse response data.');
 
-      // Fetch Available Company Drives
-      const drivesRes = await axios.get(`${API}/api/placements`);
+      const drivesRes = await axios.get(`${API}/api/placements`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (drivesRes.data?.success) setAvailableDrives(drivesRes.data.data);
 
-      // Fetch AI match scores for each drive (non-blocking: if the AI
-      // service is briefly unavailable, cards just render without a badge)
       try {
-        const scoresRes = await axios.get(`${API}/api/placements/match-scores`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (scoresRes.data?.success) setMatchScores(scoresRes.data.data || {});
-      } catch (scoreErr) {
-        console.warn('Match score fetch failed (non-fatal):', scoreErr.message);
-      }
-
-      // Fetch notifications (new placement drives, event confirmations, etc.)
-      try {
-        const notifRes = await axios.get(`${API}/api/notifications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (notifRes.data?.success) {
-          setNotifications(notifRes.data.data || []);
-          setUnreadCount(notifRes.data.unreadCount || 0);
-        }
-      } catch (notifErr) {
-        console.warn('Notification fetch failed (non-fatal):', notifErr.message);
+        const programsRes = await axios.get(`${API}/api/events`, { headers: { Authorization: `Bearer ${token}` } });
+        if (programsRes.data?.success) setEventTrainingPrograms(programsRes.data.data || []);
+      } catch (programError) {
+        toast.error(programError.response?.data?.message || 'Unable to load events and training.');
       }
 
     } catch (err) {
@@ -470,9 +447,43 @@ const [applyingId, setApplyingId] = useState(null);
     }
   };
 
-  useEffect(() => { fetchDashboard(); }, []);
+  const handleProgramRegistration = async (programId) => {
+    if (registeringProgramId) return;
+    setRegisteringProgramId(programId);
+    try {
+      const response = await axios.post(`${API}/api/events/${programId}/register`, {}, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      
+      // Update local events and training lists so registrations appear instantly
+      setEventTrainingPrograms(current => current.map(program => program._id === programId
+        ? { ...program, isRegistered: true, registrationCount: response.data.data.registrationCount }
+        : program));
+      
+      toast.success(response.data.message || 'Registered successfully');
+      
+      // Refresh dashboard data to sync backend state updates and stats
+      await fetchDashboard();
+    } catch (registrationError) {
+      toast.error(registrationError.response?.data?.message || 'Unable to register for this program.');
+    } finally {
+      setRegisteringProgramId(null);
+    }
+  };
 
-  // When profile is saved from modal, update in-place without full reload
+  const fetchBroadcasts = async () => {
+    try {
+      const profileString = localStorage.getItem('profile');
+      const token = profileString ? JSON.parse(profileString).token : null;
+      const res = await axios.get(`${API}/api/placements/broadcasts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) setBroadcasts(res.data.data);
+    } catch (err) {
+      console.error('Fetch Broadcasts Error', err);
+    }
+  };
+
   const handleProfileSaved = (updatedProfile) => {
     setDashboardData(prev => ({
       ...prev,
@@ -480,49 +491,36 @@ const [applyingId, setApplyingId] = useState(null);
     }));
   };
 
-  const theme = isDark ? 'sd-dark' : 'sd-light';
-  
-  const handleOpenNotifications = async () => {
-    setShowNotifications((prev) => !prev);
-  };
-
-  const handleMarkAllRead = async () => {
+  const handleApply = async (companyId) => {
+    if (applyingId) return;
+    setApplyingId(companyId);
     try {
       const token = getToken();
-      await axios.put(`${API}/api/notifications/read-all`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await axios.post(`${API}/api/student/apply`, { companyId }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+      if (res.data && res.data.success) {
+        toast.success('Successfully applied!');
+        await fetchDashboard();
+      }
     } catch (err) {
-      console.warn('Failed to mark notifications as read:', err.message);
+      console.error("Application Error Details:", err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to apply.';
+      toast.error(errorMessage);
+    } finally {
+      setApplyingId(null);
     }
   };
 
-  const handleApply = async (companyId) => {
-  if (applyingId) return; // Prevent overlapping clicks
-  setApplyingId(companyId);
+  useEffect(() => { 
+    fetchDashboard(); 
+  }, []);
 
-  try {
-    const token = getToken();
-    const res = await axios.post(`${API}/api/student/apply`, { companyId }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  useEffect(() => {
+    fetchBroadcasts();
+  }, []);
 
-    if (res.data && res.data.success) {
-      toast.success('Successfully applied!');
-      await fetchDashboard(); // Refresh UI instantly
-    }
-  } catch (err) {
-    console.error("Application Error Details:", err);
-    // Grabs the exact error message, or defaults to the network error message
-    const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to apply.';
-    toast.error(errorMessage);
-  } finally {
-    setApplyingId(null);
-  }
-};
-
+  const theme = isDark ? 'sd-dark' : 'sd-light';
 
   if (loading) return (
     <div className={`sd-loading-screen ${theme}`}>
@@ -550,10 +548,11 @@ const [applyingId, setApplyingId] = useState(null);
   const {
     profile = {},
     stats = { eventsCount: 0, appliedCompaniesCount: 0, trainingsAttendedCount: 0 },
-    registeredEvents = [],
     appliedCompanies = [],
-    trainingAttendance = [],
   } = dashboardData;
+
+  // Filter events/training programs that are marked as registered
+  const registeredPrograms = eventTrainingPrograms.filter(p => p.isRegistered);
 
   const initials = (profile?.username || user?.username || 'S').slice(0, 2).toUpperCase();
   const username = profile?.username || user?.username || 'Student';
@@ -561,15 +560,13 @@ const [applyingId, setApplyingId] = useState(null);
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'companies', label: 'Companies', icon: Briefcase },
-    { id: 'events', label: 'Events', icon: Calendar },
-    { id: 'training', label: 'Training', icon: Award },
+    { id: 'programs', label: 'Events & Training', icon: Calendar },
   ];
 
   return (
     <div className={`sd-root ${theme}`}>
       <style>{STYLES}</style>
 
-      {/* Profile Edit Modal */}
       {showProfileModal && (
         <div className="sd-modal-portal">
           <ProfileModal
@@ -588,7 +585,6 @@ const [applyingId, setApplyingId] = useState(null);
           <span className="sd-logo-text">CampusConnect</span>
         </div>
 
-        {/* Clickable Avatar */}
         <motion.div
           className="sd-avatar-wrap sd-avatar-clickable"
           onClick={() => setShowProfileModal(true)}
@@ -618,7 +614,6 @@ const [applyingId, setApplyingId] = useState(null);
 
         <div className="sd-sidebar-spacer" />
 
-        {/* Resume quick-link */}
         {profile.resumeUrl && (
           <a
             href={`${API}/${profile.resumeUrl}`}
@@ -648,42 +643,41 @@ const [applyingId, setApplyingId] = useState(null);
           </div>
           <div className="sd-topbar-actions">
             <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
-            {/* Mobile edit profile button */}
             <button className="sd-topbar-bell" onClick={() => setShowProfileModal(true)} title="Edit Profile">
               <Edit3 size={16} />
             </button>
             <div style={{ position: 'relative' }}>
-              <button className="sd-topbar-bell" onClick={handleOpenNotifications}>
+              <button className="sd-topbar-bell" onClick={() => setShowNotifications(!showNotifications)}>
                 <Bell size={18} />
-                {unreadCount > 0 && <span className="sd-bell-dot" />}
+                {broadcasts.length > 0 && <span className="sd-bell-dot" />}
               </button>
+
               {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="sd-notif-panel"
-                >
-                  <div className="sd-notif-header">
-                    <span>Notifications</span>
-                    {unreadCount > 0 && (
-                      <button className="sd-notif-mark-read" onClick={handleMarkAllRead}>Mark all read</button>
-                    )}
+                <div style={{
+                  position: 'absolute', right: 0, top: '46px', width: '320px',
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: '16px', boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                  zIndex: 100, padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-head)' }}>Broadcast Alerts</h4>
+                    <span style={{ fontSize: '10px', background: 'var(--accent-soft)', color: 'var(--accent-text)', padding: '2px 6px', borderRadius: '4px' }}>Active</span>
                   </div>
-                  <div className="sd-notif-list">
-                    {notifications.length === 0 ? (
-                      <div className="sd-notif-empty">No notifications yet.</div>
+
+                  <div style={{ maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {broadcasts.length === 0 ? (
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>No recent broadcasts</p>
                     ) : (
-                      notifications.map((n) => (
-                        <div key={n._id} className={`sd-notif-item ${n.isRead ? '' : 'sd-notif-unread'}`}>
-                          <p className="sd-notif-title">{n.title}</p>
-                          <p className="sd-notif-message">{n.message}</p>
-                          <p className="sd-notif-time">{new Date(n.createdAt).toLocaleString()}</p>
+                      broadcasts.map(b => (
+                        <div key={b._id} style={{ padding: '10px', borderRadius: '10px', background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+                          <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-head)' }}>{b.subject}</p>
+                          <p style={{ fontSize: '11.5px', color: 'var(--text-sub)', marginTop: '4px', lineHeight: '1.4' }}>{b.message}</p>
+                          <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '6px' }}>{new Date(b.createdAt).toLocaleDateString()}</p>
                         </div>
                       ))
                     )}
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
           </div>
@@ -715,7 +709,7 @@ const [applyingId, setApplyingId] = useState(null);
                 </div>
 
                 <div className="sd-stats-row">
-                  <StatCard icon={Calendar} label="Events Joined" value={stats.eventsCount || 0} gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" delay={0.05} />
+                  <StatCard icon={Calendar} label="Events Joined" value={stats.eventsCount || registeredPrograms.length} gradient="linear-gradient(135deg,#6366f1,#8b5cf6)" delay={0.05} />
                   <StatCard icon={Briefcase} label="Companies Applied" value={stats.appliedCompaniesCount || 0} gradient="linear-gradient(135deg,#0ea5e9,#06b6d4)" delay={0.1} />
                   <StatCard icon={Activity} label="Trainings Attended" value={stats.trainingsAttendedCount || 0} gradient="linear-gradient(135deg,#10b981,#059669)" delay={0.15} />
                 </div>
@@ -773,13 +767,13 @@ const [applyingId, setApplyingId] = useState(null);
                     <div className="sd-card-header">
                       <div className="sd-card-icon" style={{ '--icon-color': '#10b981' }}><Calendar size={16} /></div>
                       <div>
-                        <h3 className="sd-card-title">Upcoming Events</h3>
+                        <h3 className="sd-card-title">Upcoming Registered Events</h3>
                         <p className="sd-card-sub">Your registered events</p>
                       </div>
-                      <button onClick={() => setActiveTab('events')} className="sd-view-all">View all <ChevronRight size={13} /></button>
+                      <button onClick={() => setActiveTab('programs')} className="sd-view-all">View all <ChevronRight size={13} /></button>
                     </div>
-                    {registeredEvents.slice(0, 3).length > 0
-                      ? registeredEvents.slice(0, 3).map((ev, i) => <EventRow key={i} ev={ev} />)
+                    {registeredPrograms.slice(0, 3).length > 0
+                      ? registeredPrograms.slice(0, 3).map((ev, i) => <EventRow key={i} ev={ev} />)
                       : <EmptyState text="No events registered." />}
                   </div>
                 </div>
@@ -789,8 +783,6 @@ const [applyingId, setApplyingId] = useState(null);
             {/* ════════ COMPANIES ════════ */}
             {activeTab === 'companies' && (
               <motion.div key="companies" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
-
-                {/* Available Drives Section */}
                 <SectionHeader icon={Zap} title="New Opportunities" sub={`${availableDrives.length} active placement drives`} color="#6366f1" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                   {availableDrives.map((comp, idx) => (
@@ -840,7 +832,6 @@ const [applyingId, setApplyingId] = useState(null);
                   ))}
                 </div>
 
-                {/* Applied Companies Section */}
                 <SectionHeader icon={Briefcase} title="My Applications" sub={`${appliedCompanies.length} tracked applications`} color="#f59e0b" />
                 {appliedCompanies.length > 0 ? (
                   <div className="sd-list">
@@ -858,54 +849,69 @@ const [applyingId, setApplyingId] = useState(null);
                 ) : <EmptyCard text="You haven't applied to any companies yet." icon={Briefcase} />}
               </motion.div>
             )}
-            {/* ════════ EVENTS ════════ */}
-            {activeTab === 'events' && (
-              <motion.div key="events" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
-                <SectionHeader icon={Calendar} title="My Registered Events" sub={`${registeredEvents.length} event${registeredEvents.length !== 1 ? 's' : ''}`} color="#10b981" />
-                {registeredEvents.length > 0 ? (
+
+            {/* ════════ EVENTS & TRAINING ════════ */}
+            {activeTab === 'programs' && (
+              <motion.div key="programs" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
+                <SectionHeader icon={Calendar} title="Events & Training" sub={`${eventTrainingPrograms.length} available program${eventTrainingPrograms.length !== 1 ? 's' : ''} for your department`} color="#10b981" />
+                
+                {eventTrainingPrograms.length > 0 ? (
                   <div className="sd-events-grid">
-                    {registeredEvents.map((ev, i) => (
-                      <motion.div key={ev._id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="sd-event-card">
+                    {eventTrainingPrograms.map((program, index) => (
+                      <motion.article key={program._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="sd-event-card">
                         <div className="sd-event-top">
-                          <span className="sd-event-chip">{ev.category || 'Technical'}</span>
-                          <span className="sd-event-date">📅 {new Date(ev.date).toLocaleDateString()}</span>
+                          <span className="sd-event-chip">{program.type} · {program.category}</span>
+                          <span className="sd-event-date">{new Date(program.date).toLocaleString()}</span>
                         </div>
-                        <h3 className="sd-event-title">{ev.title}</h3>
-                        <p className="sd-event-desc">{ev.description}</p>
+                        <h3 className="sd-event-title">{program.title}</h3>
+                        <p className="sd-event-desc">{program.description}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', margin: '4px 0' }}>
+                          <span className="sd-event-org"><Star size={11} /> Organizer: {program.organizer}</span>
+                          <span className="sd-event-org">Department: {program.targetDepartment?.includes('All') ? 'All Departments' : (program.targetDepartment || []).join(', ')}</span>
+                        </div>
                         <div className="sd-event-footer">
-                          <span className="sd-event-org"><Star size={11} /> {ev.organizer}</span>
-                          <button className="sd-event-btn"><ExternalLink size={12} /> Details</button>
+                          <span className="sd-event-date">{program.registrationCount || 0} registered</span>
+                          <button
+                            type="button"
+                            className="sd-event-btn"
+                            disabled={program.isRegistered || registeringProgramId === program._id}
+                            onClick={() => handleProgramRegistration(program._id)}
+                          >
+                            {program.isRegistered ? 'Registered ✓' : registeringProgramId === program._id ? 'Registering…' : 'Register'}
+                          </button>
+                        </div>
+                        <div className="sd-event-glow" />
+                      </motion.article>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyCard text="No upcoming events or training sessions are available for your department." icon={Calendar} />
+                )}
+
+                <div className="sd-panel-spacer" />
+                <SectionHeader icon={CheckCircle} title="My Registered Events & Training" sub={`${registeredPrograms.length} registrations`} color="#6366f1" />
+                
+                {registeredPrograms.length > 0 ? (
+                  <div className="sd-events-grid">
+                    {registeredPrograms.map((program, i) => (
+                      <motion.div key={program._id || i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="sd-event-card">
+                        <div className="sd-event-top">
+                          <span className="sd-event-chip">{program.type} · {program.category}</span>
+                          <span className="sd-event-date">📅 {new Date(program.date).toLocaleDateString()}</span>
+                        </div>
+                        <h3 className="sd-event-title">{program.title}</h3>
+                        <p className="sd-event-desc">{program.description}</p>
+                        <div className="sd-event-footer">
+                          <span className="sd-event-org"><Star size={11} /> {program.organizer || 'Campus venue'}</span>
+                          <span className="sd-badge-emerald sd-status-badge"><span className="sd-badge-dot" style={{ background: '#34d399' }} />Registered ✓</span>
                         </div>
                         <div className="sd-event-glow" />
                       </motion.div>
                     ))}
                   </div>
-                ) : <EmptyCard text="You have not registered for any events yet." icon={Calendar} />}
-              </motion.div>
-            )}
-
-            {/* ════════ TRAINING ════════ */}
-            {activeTab === 'training' && (
-              <motion.div key="training" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
-                <SectionHeader icon={Award} title="Training Log" sub={`${trainingAttendance.length} session${trainingAttendance.length !== 1 ? 's' : ''}`} color="#6366f1" />
-                {trainingAttendance.length > 0 ? (
-                  <div className="sd-list">
-                    {trainingAttendance.map((session, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="sd-list-item">
-                        <div className={`sd-training-icon ${session.attended ? 'sd-training-done' : 'sd-training-pending'}`}>
-                          {session.attended ? <CheckCircle size={18} /> : <Clock size={18} />}
-                        </div>
-                        <div className="sd-list-body">
-                          <h4 className="sd-list-title">{session.trainingType}</h4>
-                          <p className="sd-list-sub">{new Date(session.date).toLocaleDateString()}</p>
-                        </div>
-                        <span className={`sd-training-badge ${session.attended ? 'sd-training-badge-done' : 'sd-training-badge-pending'}`}>
-                          {session.attended ? 'Attended' : 'Scheduled'}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : <EmptyCard text="No training sessions recorded." icon={Award} />}
+                ) : (
+                  <EmptyState text="You have not registered for any events or training sessions yet." />
+                )}
               </motion.div>
             )}
 
@@ -981,7 +987,7 @@ const EventRow = ({ ev }) => (
 );
 
 /* ─────────────────────────────────────────────
-   Modal-specific styles (injected inside the modal)
+   Modal-specific styles
 ───────────────────────────────────────────── */
 const MODAL_STYLES = `
   .pe-backdrop {
@@ -990,18 +996,19 @@ const MODAL_STYLES = `
     backdrop-filter: blur(4px);
   }
   .sd-modal-portal {
-  position: fixed; inset: 0; z-index: 997; pointer-events: none;
-  display: flex; align-items: center; justify-content: center; padding: 16px;
-}
+    position: fixed; inset: 0; z-index: 997; pointer-events: none;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .sd-modal-portal > * { pointer-events: all; }
 
- .pe-modal {
-  position: relative; z-index: 999;
-  width: 92%; max-width: 500px;
-  border-radius: 24px;
-  display: flex; flex-direction: column;
-  max-height: 90vh; overflow: hidden;
-  font-family: 'Inter', sans-serif;
-}
+  .pe-modal {
+    position: relative; z-index: 999;
+    width: 92%; max-width: 500px;
+    border-radius: 24px;
+    display: flex; flex-direction: column;
+    max-height: 90vh; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+  }
   .sd-dark .pe-modal  { background: #131929; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 32px 80px rgba(0,0,0,0.6); }
   .sd-light .pe-modal { background: #ffffff;  border: 1px solid rgba(99,102,241,0.15); box-shadow: 0 32px 80px rgba(99,102,241,0.12); }
 
@@ -1029,7 +1036,6 @@ const MODAL_STYLES = `
   }
   .pe-close:hover { border-color: var(--border-hov); color: var(--text-head); }
 
-  /* Tabs */
   .pe-tabs {
     display: flex; gap: 4px;
     padding: 12px 24px;
@@ -1046,11 +1052,9 @@ const MODAL_STYLES = `
   .pe-tab:hover { background: var(--accent-soft); color: var(--accent-text); }
   .pe-tab-active { background: var(--accent-soft) !important; color: var(--accent-text) !important; font-weight: 600; }
 
-  /* Body */
   .pe-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
   .pe-tab-content { display: flex; flex-direction: column; gap: 16px; }
 
-  /* Form fields */
   .pe-field { display: flex; flex-direction: column; gap: 6px; }
   .pe-label { font-size: 12px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em; }
   .pe-input {
@@ -1065,7 +1069,6 @@ const MODAL_STYLES = `
   .pe-input-disabled { opacity: 0.5; cursor: not-allowed; }
   .pe-hint { font-size: 11px; color: var(--text-dim); }
 
-  /* Tag input row */
   .pe-tag-input-row { display: flex; gap: 8px; }
   .pe-tag-input-row .pe-input { flex: 1; }
   .pe-add-btn {
@@ -1077,7 +1080,6 @@ const MODAL_STYLES = `
   }
   .pe-add-btn:hover { background: rgba(99,102,241,0.18); }
 
-  /* Tags */
   .pe-tags-wrap { display: flex; flex-wrap: wrap; gap: 7px; min-height: 30px; }
   .pe-tag {
     display: inline-flex; align-items: center; gap: 5px;
@@ -1085,7 +1087,7 @@ const MODAL_STYLES = `
     font-size: 12px; font-weight: 600;
   }
   .pe-tag-purple { background: rgba(99,102,241,0.1); color: var(--accent-text); border: 1px solid rgba(99,102,241,0.2); }
-  .pe-tag-blue   { background: rgba(14,165,233,0.1);  color: #0ea5e9;           border: 1px solid rgba(14,165,233,0.2); }
+  .pe-tag-blue   { background: rgba(14,165,233,0.1);  color: #0ea5e9;            border: 1px solid rgba(14,165,233,0.2); }
   .pe-tag-del {
     width: 16px; height: 16px; border-radius: 50%;
     border: none; background: rgba(0,0,0,0.12);
@@ -1094,7 +1096,6 @@ const MODAL_STYLES = `
   }
   .pe-tag-del:hover { background: rgba(0,0,0,0.25); }
 
-  /* Resume upload */
   .pe-resume-current {
     display: flex; align-items: center; gap: 12px;
     padding: 14px 16px; border-radius: 12px;
@@ -1135,14 +1136,12 @@ const MODAL_STYLES = `
   .pe-upload-title { font-size: 14px; font-weight: 600; color: var(--text-head); }
   .pe-upload-sub   { font-size: 12px; color: var(--text-muted); }
 
-  /* Feedback */
   .pe-msg { margin: 0 24px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 500; }
   .pe-msg-success { background: rgba(16,185,129,0.1); color: #059669; border: 1px solid rgba(16,185,129,0.25); }
   .pe-msg-error   { background: rgba(248,113,113,0.1); color: #dc2626; border: 1px solid rgba(248,113,113,0.25); }
   .sd-dark .pe-msg-success { color: #34d399; }
   .sd-dark .pe-msg-error   { color: #fca5a5; }
 
-  /* Footer */
   .pe-footer {
     display: flex; gap: 10px; justify-content: flex-end;
     padding: 16px 24px;
@@ -1176,7 +1175,7 @@ const MODAL_STYLES = `
 `;
 
 /* ─────────────────────────────────────────────
-   Dashboard styles (theme variables)
+   Dashboard styles
 ───────────────────────────────────────────── */
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -1247,7 +1246,6 @@ const STYLES = `
     background: var(--bg-sidebar); border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
-    transition: background 0.4s ease, border-color 0.4s ease;
   }
   .sd-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; padding: 0 8px; }
   .sd-logo-icon {
@@ -1263,16 +1261,11 @@ const STYLES = `
     display: flex; align-items: center; gap: 12px;
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 16px; padding: 12px; margin-bottom: 28px;
-    transition: background 0.4s ease;
   }
-  .sd-avatar-clickable {
-    cursor: pointer; position: relative;
-  }
+  .sd-avatar-clickable { cursor: pointer; position: relative; }
   .sd-avatar-clickable:hover { border-color: var(--accent) !important; background: var(--accent-soft) !important; }
   .sd-avatar-edit-hint {
-    margin-left: auto; flex-shrink: 0;
-    color: var(--text-dim); opacity: 0;
-    transition: opacity 0.2s;
+    margin-left: auto; flex-shrink: 0; color: var(--text-dim); opacity: 0; transition: opacity 0.2s;
   }
   .sd-avatar-clickable:hover .sd-avatar-edit-hint { opacity: 1; color: var(--accent-text); }
 
@@ -1330,20 +1323,17 @@ const STYLES = `
     padding: 18px 32px; border-bottom: 1px solid var(--border);
     background: var(--topbar-bg); backdrop-filter: blur(12px);
     position: sticky; top: 0; z-index: 10;
-    transition: background 0.4s ease, border-color 0.4s ease;
   }
   .sd-topbar-greeting { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
   .sd-topbar-title    { font-size: 20px; font-weight: 700; color: var(--text-head); letter-spacing: -0.02em; }
   .sd-topbar-actions  { display: flex; align-items: center; gap: 10px; }
 
   .sd-theme-toggle {
-    display: flex; align-items: center; gap: 8px;
-    background: none; border: none; cursor: pointer; padding: 0;
+    display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 0;
   }
   .sd-toggle-track {
     width: 50px; height: 26px; border-radius: 99px;
-    position: relative; padding: 3px;
-    border: 1px solid var(--border);
+    position: relative; padding: 3px; border: 1px solid var(--border);
     display: flex; align-items: center; transition: border-color 0.4s;
   }
   .sd-toggle-thumb {
@@ -1351,7 +1341,7 @@ const STYLES = `
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 1px 6px rgba(0,0,0,0.25); flex-shrink: 0;
   }
-  .sd-toggle-label { font-size: 12px; font-weight: 600; color: var(--text-muted); transition: color 0.3s; min-width: 32px; }
+  .sd-toggle-label { font-size: 12px; font-weight: 600; color: var(--text-muted); min-width: 32px; }
 
   .sd-topbar-bell {
     position: relative; width: 38px; height: 38px; border-radius: 10px;
@@ -1364,11 +1354,6 @@ const STYLES = `
     position: absolute; top: 6px; right: 6px;
     width: 8px; height: 8px; border-radius: 50%;
     background: #6366f1; border: 2px solid var(--bg);
-    animation: sd-pulse 2s infinite;
-  }
-  @keyframes sd-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,.4); }
-    50%       { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
   }
 
   /* Notification dropdown */
@@ -1402,7 +1387,7 @@ const STYLES = `
     padding: 40px 40px 40px 44px; background: var(--hero-bg);
     border: 1px solid var(--hero-border);
     display: flex; align-items: center; justify-content: space-between;
-    min-height: 230px; transition: background 0.4s ease;
+    min-height: 230px;
   }
   .sd-hero-glow { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; }
   .sd-hero-glow-1 { width: 360px; height: 360px; background: rgba(99,102,241,0.15); top: -120px; right: -60px; }
@@ -1425,16 +1410,11 @@ const STYLES = `
     display: flex; align-items: center; gap: 6px;
     padding: 6px 12px; border-radius: 10px;
     background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-    font-size: 12px; color: var(--text-sub); font-weight: 500; backdrop-filter: blur(4px);
+    font-size: 12px; color: var(--text-sub); font-weight: 500;
   }
   .sd-light .sd-meta-pill { background: rgba(99,102,241,0.07); border-color: rgba(99,102,241,0.15); }
   .sd-hero-illustration { position: relative; z-index: 2; display: flex; align-items: flex-end; justify-content: center; }
   .sd-hero-img { width: 200px; object-fit: contain; }
-  .sd-hero-img-glow {
-    position: absolute; width: 200px; height: 200px; border-radius: 50%;
-    background: rgba(99,102,241,0.18); filter: blur(50px);
-    bottom: -40px; left: 50%; transform: translateX(-50%);
-  }
 
   /* Stats */
   .sd-stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
@@ -1443,38 +1423,30 @@ const STYLES = `
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 20px; padding: 22px 20px;
     display: flex; align-items: center; gap: 16px;
-    transition: all 0.3s ease; cursor: default;
     box-shadow: 0 2px 12px rgba(0,0,0,0.05);
   }
-  .sd-stat-card:hover { border-color: var(--border-hov); transform: translateY(-2px); box-shadow: 0 16px 40px rgba(99,102,241,0.08); }
   .sd-stat-icon-wrap {
     width: 48px; height: 48px; border-radius: 14px; background: var(--grad);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; flex-shrink: 0; box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
   }
   .sd-stat-body { flex: 1; }
   .sd-stat-value { display: block; font-size: 28px; font-weight: 800; color: var(--text-head); line-height: 1; margin-bottom: 4px; }
   .sd-stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
   .sd-stat-glow {
-    position: absolute; right: -30px; top: -30px;
-    width: 100px; height: 100px; border-radius: 50%;
-    background: var(--grad); filter: blur(50px); opacity: 0.1; pointer-events: none;
+    position: absolute; right: -30px; top: -30px; width: 100px; height: 100px;
+    border-radius: 50%; background: var(--grad); filter: blur(50px); opacity: 0.1; pointer-events: none;
   }
 
   /* Cards */
   .sd-card {
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 20px; padding: 22px;
-    display: flex; flex-direction: column; gap: 16px;
-    transition: border-color 0.3s, box-shadow 0.3s, background 0.4s;
+    border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 16px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   }
-  .sd-card:hover { border-color: var(--border-hov); box-shadow: 0 12px 30px rgba(99,102,241,0.06); }
   .sd-card-header { display: flex; align-items: center; gap: 12px; }
   .sd-card-icon {
     width: 38px; height: 38px; border-radius: 11px; background: var(--accent-soft);
-    display: flex; align-items: center; justify-content: center;
-    color: var(--icon-color); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: var(--icon-color); flex-shrink: 0;
   }
   .sd-card-title { font-size: 14px; font-weight: 700; color: var(--text-head); }
   .sd-card-sub   { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
@@ -1482,31 +1454,24 @@ const STYLES = `
   .sd-count-blue  { background: rgba(14,165,233,0.08); color: #0ea5e9; }
   .sd-view-all {
     margin-left: auto; display: flex; align-items: center; gap: 3px;
-    font-size: 11px; font-weight: 600; color: var(--accent);
-    background: none; border: none; cursor: pointer; transition: gap 0.2s;
+    font-size: 11px; font-weight: 600; color: var(--accent); background: none; border: none; cursor: pointer;
   }
-  .sd-view-all:hover { gap: 6px; }
 
   .sd-tags-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-  .sd-tag { padding: 6px 13px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: default; transition: all 0.2s; }
+  .sd-tag { padding: 6px 13px; border-radius: 10px; font-size: 12px; font-weight: 600; }
   .sd-tag-purple { background: rgba(99,102,241,0.08); color: var(--accent-text); border: 1px solid rgba(99,102,241,0.18); }
-  .sd-tag-purple:hover { background: rgba(99,102,241,0.15); }
   .sd-tag-blue   { background: rgba(14,165,233,0.08); color: #0ea5e9; border: 1px solid rgba(14,165,233,0.2); }
-  .sd-tag-blue:hover { background: rgba(14,165,233,0.15); }
 
   .sd-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-  /* List */
+  /* List & Mini rows */
   .sd-list { display: flex; flex-direction: column; gap: 10px; }
   .sd-list-item {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 16px; border-radius: 14px;
-    background: var(--bg-card); border: 1px solid var(--border); transition: all 0.2s;
+    display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px;
+    background: var(--bg-card); border: 1px solid var(--border);
   }
-  .sd-list-item:hover { border-color: var(--border-hov); background: var(--bg-card-hov); }
   .sd-list-avatar {
-    width: 38px; height: 38px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0;
   }
   .sd-list-body { flex: 1; min-width: 0; }
@@ -1517,19 +1482,16 @@ const STYLES = `
   .sd-mini-row:last-child { border-bottom: none; }
   .sd-mini-dot {
     width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff;
   }
   .sd-mini-body { flex: 1; min-width: 0; }
   .sd-mini-title { font-size: 12.5px; font-weight: 600; color: var(--text-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sd-mini-sub   { font-size: 11px; color: var(--text-muted); }
-  .sd-mini-chip  { padding: 3px 8px; border-radius: 8px; background: var(--accent-soft); font-size: 10px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+  .sd-mini-chip  { padding: 3px 8px; border-radius: 8px; background: var(--accent-soft); font-size: 10px; font-weight: 600; color: var(--text-muted); }
 
   /* Status badges */
   .sd-status-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px; border-radius: 99px;
-    font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
   }
   .sd-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .sd-badge-blue    { background: rgba(96,165,250,0.1);   color: #3b82f6; border: 1px solid rgba(96,165,250,0.25); }
@@ -1542,54 +1504,31 @@ const STYLES = `
   .sd-dark .sd-badge-emerald { color: #6ee7b7; }
   .sd-dark .sd-badge-rose    { color: #fca5a5; }
 
-  /* AI match score badges (placement cards) */
-  .sd-match-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px; border-radius: 99px;
-    font-size: 11px; font-weight: 700; white-space: nowrap;
-  }
-  .sd-match-high { background: rgba(52,211,153,0.12); color: #059669; border: 1px solid rgba(52,211,153,0.3); }
-  .sd-match-mid  { background: rgba(99,102,241,0.12);  color: var(--accent-text); border: 1px solid rgba(99,102,241,0.3); }
-  .sd-match-low  { background: rgba(148,163,184,0.1);  color: #64748b; border: 1px solid rgba(148,163,184,0.25); }
-  .sd-dark .sd-match-high { color: #6ee7b7; }
-  .sd-dark .sd-match-mid  { color: #a5b4fc; }
-  .sd-dark .sd-match-low  { color: #94a3b8; }
-
-  /* Training */
-  .sd-training-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-  .sd-training-done    { background: rgba(52,211,153,0.1); color: #10b981; }
-  .sd-training-pending { background: rgba(251,191,36,0.1); color: #f59e0b; }
-  .sd-training-badge { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
-  .sd-training-badge-done    { background: rgba(52,211,153,0.1); color: #059669; border: 1px solid rgba(52,211,153,0.2); }
-  .sd-training-badge-pending { background: rgba(251,191,36,0.1); color: #d97706; border: 1px solid rgba(251,191,36,0.2); }
-  .sd-dark .sd-training-badge-done    { color: #6ee7b7; }
-  .sd-dark .sd-training-badge-pending { color: #fcd34d; }
-
-  /* Events grid */
+  /* Events grid & cards */
   .sd-events-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap: 16px; }
   .sd-event-card {
     position: relative; overflow: hidden;
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 18px; padding: 20px;
     display: flex; flex-direction: column; gap: 10px;
-    transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
-  .sd-event-card:hover { border-color: rgba(16,185,129,0.3); transform: translateY(-3px); box-shadow: 0 16px 40px rgba(16,185,129,0.06); }
   .sd-event-top   { display: flex; justify-content: space-between; align-items: center; }
   .sd-event-chip  { padding: 4px 10px; border-radius: 8px; background: rgba(16,185,129,0.08); color: #059669; border: 1px solid rgba(16,185,129,0.2); font-size: 10.5px; font-weight: 600; }
   .sd-dark .sd-event-chip { color: #34d399; }
   .sd-event-date  { font-size: 11px; color: var(--text-muted); }
   .sd-event-title { font-size: 15px; font-weight: 700; color: var(--text-head); }
-  .sd-event-desc  { font-size: 12px; color: var(--text-sub); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sd-event-desc  { font-size: 12px; color: var(--text-sub); line-height: 1.6; }
   .sd-event-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); margin-top: auto; }
   .sd-event-org   { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
-  .sd-event-btn   { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; background: rgba(16,185,129,0.07); color: #059669; border: 1px solid rgba(16,185,129,0.18); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .sd-event-btn   { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; background: rgba(16,185,129,0.07); color: #059669; border: 1px solid rgba(16,185,129,0.18); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
   .sd-dark .sd-event-btn { color: #34d399; }
   .sd-event-btn:hover { background: rgba(16,185,129,0.14); }
   .sd-event-glow { position: absolute; right: -40px; bottom: -40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(16,185,129,0.05); filter: blur(40px); pointer-events: none; }
 
   /* Section header */
   .sd-section-header { display: flex; align-items: center; gap: 14px; }
+  .sd-panel-spacer { height: 20px; }
   .sd-section-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; color: var(--ic); flex-shrink: 0; }
   .sd-section-title { font-size: 18px; font-weight: 700; color: var(--text-head); }
   .sd-section-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
@@ -1601,22 +1540,19 @@ const STYLES = `
   .sd-empty-icon { color: var(--text-dim); }
   .sd-empty-card p { font-size: 14px; color: var(--text-dim); }
 
-  /* Loading / Error */
-  .sd-loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); gap: 16px; font-family: 'Inter', sans-serif; transition: background 0.4s; }
+  /* Loading & Error screens */
+  .sd-loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); gap: 16px; font-family: 'Inter', sans-serif; }
   .sd-loader { width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(99,102,241,0.15); border-top-color: #6366f1; }
   .sd-loading-text { font-size: 13px; color: var(--text-muted); }
-  .sd-error-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 24px; font-family: 'Inter', sans-serif; transition: background 0.4s; }
+  .sd-error-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 24px; font-family: 'Inter', sans-serif; }
   .sd-error-card { background: var(--bg-card); border: 1px solid rgba(248,113,113,0.2); border-radius: 24px; padding: 40px; max-width: 420px; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .sd-error-icon { width: 60px; height: 60px; border-radius: 50%; background: rgba(248,113,113,0.1); color: #f87171; display: flex; align-items: center; justify-content: center; }
   .sd-error-title { font-size: 20px; font-weight: 700; color: var(--text-head); }
   .sd-error-msg   { font-size: 13px; color: var(--text-muted); }
   .sd-error-actions { display: flex; gap: 10px; }
-  .sd-btn-primary { padding: 9px 20px; border-radius: 10px; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: opacity 0.2s; }
-  .sd-btn-primary:hover { opacity: 0.85; }
-  .sd-btn-ghost { padding: 9px 20px; border-radius: 10px; background: var(--accent-soft); border: 1px solid var(--border-hov); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-  .sd-btn-ghost:hover { background: var(--border-hov); }
+  .sd-btn-primary { padding: 9px 20px; border-radius: 10px; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+  .sd-btn-ghost { padding: 9px 20px; border-radius: 10px; background: var(--accent-soft); border: 1px solid var(--border-hov); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
 
-  /* Responsive */
   @media (max-width: 900px) {
     .sd-sidebar { display: none; }
     .sd-two-col { grid-template-columns: 1fr; }
@@ -1624,14 +1560,6 @@ const STYLES = `
     .sd-hero { flex-direction: column; align-items: flex-start; }
     .sd-hero-content { max-width: 100%; }
     .sd-hero-illustration { display: none; }
-    .sd-hero-heading { font-size: 26px; }
-    .sd-content { padding: 20px 16px; }
-    .sd-topbar { padding: 14px 20px; }
-  }
-  @media (max-width: 560px) {
-    .sd-stats-row { grid-template-columns: 1fr; }
-    .sd-hero { padding: 28px 24px; }
-    .sd-toggle-label { display: none; }
   }
 `;
 

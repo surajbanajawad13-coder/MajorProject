@@ -2,6 +2,8 @@ require('../models/eventSchema.js');
 require('../models/companySchema.js');
 
 const Student = require('../models/studentSchema.js');
+const Event = require('../models/eventSchema.js');
+const Training = require('../models/trainingSchema.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -19,6 +21,15 @@ exports.getStudentDashboard = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
     }
 
+    const department = student.department || 'CSE';
+    const matchesDepartment = (item) => !item.targetDepartment?.length ||
+      item.targetDepartment.includes('All') || item.targetDepartment.includes(department);
+    const [events, trainings] = await Promise.all([
+      Event.find({ $or: [{ targetDepartment: 'All' }, { targetDepartment: department }, { targetDepartment: { $exists: false } }, { targetDepartment: { $size: 0 } }] }).sort({ eventDate: 1 }),
+      Training.find({ $or: [{ targetDepartment: 'All' }, { targetDepartment: department }, { targetDepartment: { $exists: false } }, { targetDepartment: { $size: 0 } }] }).sort({ startDate: 1 })
+    ]);
+    const registeredEvents = student.registeredEvents.filter(matchesDepartment);
+
     res.status(200).json({
       success: true,
       data: {
@@ -27,17 +38,21 @@ exports.getStudentDashboard = async (req, res) => {
           email: student.email,
           usn: student.usn,
           role: student.role,
+          department,
+          cgpa: student.cgpa,
           skills: student.skills,
           interests: student.interests,
           resumeUrl: student.resumeUrl,
           resumeOriginalName: student.resumeOriginalName,
         },
         stats: {
-          eventsCount: student.registeredEvents.length,
+          eventsCount: registeredEvents.length,
           appliedCompaniesCount: student.appliedCompanies.length,
           trainingsAttendedCount: student.trainingAttendance.filter(t => t.attended).length,
         },
-        registeredEvents: student.registeredEvents,
+        registeredEvents,
+        events,
+        trainings,
         appliedCompanies: student.appliedCompanies,
         trainingAttendance: student.trainingAttendance,
       },
@@ -123,6 +138,13 @@ exports.applyForDrive = async (req, res) => {
     const student = await Student.findById(studentId);
     if (!student) {
       return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const Company = require('../models/companySchema');
+    const drive = await Company.findById(companyId).select('targetDepartment');
+    if (!drive) return res.status(404).json({ success: false, error: 'Placement drive not found.' });
+    if (drive.targetDepartment?.length && !drive.targetDepartment.includes('All') && !drive.targetDepartment.includes(student.department)) {
+      return res.status(403).json({ success: false, error: 'This placement drive is not available to your department.' });
     }
 
     // Safely check if already applied (handles potential nulls)

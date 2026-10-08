@@ -4,18 +4,18 @@ const jwt = require('jsonwebtoken');
 const verifyTokenAndRole = (allowedRoles) => {
   return (req, res, next) => {
     try {
-      // 1. Extract the token from the Authorization header
-      const token = req.headers.authorization.split(' ')[1];
-      
-      // 2. Verify the JWT token
-      const decodedData = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // 3. Attach user data to the request object
-     req.userId = decodedData.id || decodedData._id;
-    req.role = decodedData.role;
+      const authHeader = req.headers.authorization;
+      const token = authHeader && authHeader.split(' ')[1];
+      if (!token) {
+        return res.status(401).json({ message: 'Authentication token required' });
+      }
 
-      // 4. Check if the user's role is permitted
-      if (!allowedRoles.includes(req.role)) {
+      const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+      req.userId = decodedData.id || decodedData._id;
+      req.role = decodedData.role;
+      req.user = decodedData;
+
+      if (!Array.isArray(allowedRoles) || !allowedRoles.includes(req.role)) {
         return res.status(403).json({ message: 'Forbidden: Access denied' });
       }
 

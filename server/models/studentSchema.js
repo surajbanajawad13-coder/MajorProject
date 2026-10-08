@@ -26,7 +26,7 @@ const studentSchema=new mongoose.Schema({
   role: { 
     type: String, 
     default: 'Student',
-    enum: ['Student', 'Admin', 'Placement Officer', 'Society Admin'] 
+    enum: ['Student', 'Placement Officer', 'Event Coordinator', 'Department Placement Coordinator', 'Faculty', 'Admin']
   },
   // AI & Personalization Data
   skills:[{type:String}],
@@ -71,7 +71,12 @@ const studentSchema=new mongoose.Schema({
   registeredEvents:[{
     type:mongoose.Schema.Types.ObjectId,
     ref:'Event'
-  }]
+  }],
+  facultyMentor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Faculty',
+    default: null
+  }
 },{timestamps:true});
 
 module.exports=mongoose.model('Student',studentSchema);

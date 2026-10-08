@@ -14,6 +14,11 @@ import AdminDashboard from './Admin_dashboard/AdminDashboard.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import  ProtectedRoute  from './ProtectedRoute.jsx';
 import PublicRoute from './PublicRoute.jsx'
+import FacultyDashboard from './pages/FacultyDashboard.jsx'
+import RoleDashboard from './pages/RoleDashboard.jsx'
+import DepartmentCoordinatorDashboard from './pages/DepartmentCoordinatorDashboard.jsx'
+import CoordinatorDashboard from './pages/CoordinatorDashboard.jsx'
+import ExploreEvents from './pages/ExploreEvents.jsx'
 
 
 
@@ -56,6 +61,8 @@ createRoot(document.getElementById('root')).render(
       }
       />
 
+      <Route path="/explore-events" element={<ExploreEvents />} />
+
       
 
       <Route
@@ -93,16 +100,10 @@ createRoot(document.getElementById('root')).render(
         }
       />
 
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute
-            allowedRole="Admin"
-          >
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRole="Faculty"><FacultyDashboard /></ProtectedRoute>} />
+      <Route path="/department-coordinator" element={<ProtectedRoute allowedRole="Department Placement Coordinator"><DepartmentCoordinatorDashboard /></ProtectedRoute>} />
+      <Route path="/event-coordinator" element={<ProtectedRoute allowedRole={['Event Coordinator', 'Admin']}><CoordinatorDashboard /></ProtectedRoute>} />
+      <Route path="/admin-dashboard" element={<ProtectedRoute allowedRole="Admin"><RoleDashboard role="Admin" /></ProtectedRoute>} />
 
     </Routes>
   </Router>

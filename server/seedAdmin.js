@@ -1,40 +1,46 @@
-// server/seedAdmin.js
-// CampusConnect - creates a default Administrator account for first login.
-// Run with: node seedAdmin.js
+require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('./models/studentSchema');
-require('dotenv').config();
+const Admin = require('./models/studentSchema');
 
-async function seedAdmin() {
+const mongoUri = process.env.MONGO_URI || process.env.mongo_uri || 'mongodb://localhost:27017/CampusConnect';
+const initialPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin12345';
+
+const adminAccounts = [
+  { username: 'Campus Admin One', email: 'admin1@campusconnect.edu', usn: 'ADMIN001' },
+  { username: 'Campus Admin Two', email: 'admin2@campusconnect.edu', usn: 'ADMIN002' },
+  { username: 'Campus Admin Three', email: 'admin3@campusconnect.edu', usn: 'ADMIN003' },
+  { username: 'Campus Admin Four', email: 'admin4@campusconnect.edu', usn: 'ADMIN004' }
+];
+
+async function seedAdmins() {
   try {
-    // NOTE: server.js reads `process.env.mongo_uri` (lowercase) - matched here
-    // for consistency with the rest of this project's .env convention.
-    await mongoose.connect(process.env.mongo_uri || 'mongodb://localhost:27017/campusconnect');
-    console.log('Connected to Database');
+    await mongoose.connect(mongoUri);
+    const password = await bcrypt.hash(initialPassword, 12);
+    let created = 0;
 
-    const adminExists = await User.findOne({ role: 'Admin' });
-    if (adminExists) {
-      console.log('An Admin already exists in the database.');
-      process.exit();
+    for (const account of adminAccounts) {
+      const existing = await Admin.findOne({
+        $or: [{ email: account.email }, { usn: account.usn }, { username: account.username }]
+      });
+
+      if (existing) {
+        console.log(`${account.email} already exists; leaving the account unchanged.`);
+        continue;
+      }
+
+      await Admin.create({ ...account, password, role: 'Admin' });
+      created += 1;
+      console.log(`Created Admin account ${account.email}.`);
     }
 
-    const hashedPassword = await bcrypt.hash('admin12345', 12);
-
-    await User.create({
-      username: 'Platform Admin',
-      email: 'admin@campusconnect.edu',
-      password: hashedPassword,
-      usn: 'ADMIN001', // Using USN field as the unique login ID, matching seedTpo.js
-      role: 'Admin',
-    });
-
-    console.log('Default Admin created successfully! Login with USN: ADMIN001 / password: admin12345');
-    process.exit();
+    console.log(`Admin seeding complete: ${created} created, ${adminAccounts.length - created} already existed.`);
   } catch (error) {
-    console.error('Error seeding Admin:', error);
-    process.exit(1);
+    console.error('Admin seeding failed:', error.message);
+    process.exitCode = 1;
+  } finally {
+    await mongoose.disconnect();
   }
 }
 
-seedAdmin();
+seedAdmins();

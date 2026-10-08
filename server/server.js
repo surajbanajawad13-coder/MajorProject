@@ -14,11 +14,9 @@ require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
 const studentRoute = require('./routes/studentRoutes');
 const placementRoutes = require('./routes/placementRoutes');
-const eventRoutes = require('./routes/eventRoutes');
-const recommendationRoutes = require('./routes/recommendationRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const analyticsRoutes = require('./routes/analyticsRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+const facultyRoutes = require('./routes/facultyRoutes');
+const departmentCoordinatorRoutes = require('./routes/departmentCoordinatorRoutes');
+const eventTrainingRoutes = require('./routes/eventTrainingRoutes');
 
 const app = express();
 
@@ -32,11 +30,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoute);
 app.use('/api/placements', placementRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/recommendations', recommendationRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/department-coordinator', departmentCoordinatorRoutes);
+app.use('/api/events', eventTrainingRoutes);
 app.get('/api/test', (req, res) => {
     res.send("CampusConnect Backend is running successfully! " );
 });

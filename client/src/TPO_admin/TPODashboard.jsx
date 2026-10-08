@@ -16,7 +16,8 @@ import {
   Upload,
   FileText,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -289,6 +290,90 @@ const ApplicantsModal = ({ company, onClose, isDark }) => {
     </AnimatePresence>
   );
 };
+const BroadcastModal = ({ onClose, isDark }) => {
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [department, setDepartment] = useState('All');
+  const [sending, setSending] = useState(false);
+  const theme = isDark ? 'sd-dark' : 'sd-light';
+
+  const handleSend = async () => {
+    if (!subject || !message) {
+      toast.error('Please fill in both subject and message.');
+      return;
+    }
+
+    setSending(true);
+    try {
+      const profileString = localStorage.getItem('profile');
+      const token = profileString ? JSON.parse(profileString).token : null;
+
+      const res = await axios.post(`${API}/api/placements/broadcast`, 
+        { subject, message, department },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        toast.success(res.data.message);
+        onClose();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to broadcast alert.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div className={`pe-backdrop ${theme}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+      <motion.div className={`pe-modal ${theme}`} initial={{ opacity: 0, scale: 0.92, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, y: 16 }}>
+        
+        <div className="pe-header">
+          <div className="pe-header-left">
+            <div className="pe-avatar-big" style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}><Megaphone size={24} color="#fff" /></div>
+            <div>
+              <h2 className="pe-title">Broadcast Alert</h2>
+              <p className="pe-subtitle">Send urgent notifications to students via email</p>
+            </div>
+          </div>
+          <button className="pe-close" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div className="pe-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="pe-field">
+            <label className="pe-label">Target Audience</label>
+            <select className="pe-input" value={department} onChange={e => setDepartment(e.target.value)}>
+              <option value="All">All Students (Campus-wide)</option>
+              <option value="CSE">CSE Branch Only</option>
+              <option value="ISE">ISE Branch Only</option>
+              <option value="ECE">ECE Branch Only</option>
+              <option value="ME">ME Branch Only</option>
+              <option value="CE">CE Branch Only</option>
+            </select>
+          </div>
+
+          <div className="pe-field">
+            <label className="pe-label">Subject Line</label>
+            <input className="pe-input" placeholder="e.g. Urgent: Resume Submission Deadline Extended" value={subject} onChange={e => setSubject(e.target.value)} />
+          </div>
+
+          <div className="pe-field">
+            <label className="pe-label">Message Body</label>
+            <textarea className="pe-input" rows={5} placeholder="Type your announcement details here..." value={message} onChange={e => setMessage(e.target.value)} style={{ resize: 'vertical' }} />
+          </div>
+        </div>
+
+        <div className="pe-footer">
+          <button className="pe-btn-cancel" onClick={onClose} disabled={sending}>Cancel</button>
+          <button className="pe-btn-save" onClick={handleSend} disabled={sending}>
+            {sending ? 'Broadcasting...' : 'Send Broadcast'}
+          </button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 const TPODashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -297,10 +382,21 @@ const TPODashboard = () => {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [studentsList, setStudentsList] = useState([]);
+  const [studentFilter, setStudentFilter] = useState({ branch: '', minCgpa: 0 });
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
 
   const fetchCompanies = async () => {
     try {
-      const res = await axios.get(`${API}/api/placements`);
+      const profileString = localStorage.getItem('profile');
+        const token = profileString
+            ? JSON.parse(profileString).token
+            : null;
+      const res = await axios.get(`${API}/api/placements`, {
+        headers: {
+                Authorization: `Bearer ${token}`
+            }
+      });
       if (res.data.success) {
         setCompanies(res.data.data);
       }
@@ -335,6 +431,9 @@ const TPODashboard = () => {
           onDrivePosted={fetchCompanies}
         />
       )}
+      {isBroadcastModalOpen && (
+  <BroadcastModal onClose={() => setIsBroadcastModalOpen(false)} isDark={isDark} />
+)};
 
       {/* Sidebar */}
       <aside className="sd-sidebar">
@@ -371,7 +470,7 @@ const TPODashboard = () => {
           </div>
           <div className="sd-topbar-actions">
             <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
-            <button className="sd-topbar-bell"><Bell size={18} /><span className="sd-bell-dot" /></button>
+            <button className="sd-topbar-bell"><ShieldCheck size={18} color="var(--accent-text)" /></button>
           </div>
         </header>
 
@@ -435,9 +534,13 @@ const TPODashboard = () => {
                     <button className="sd-logout-btn" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)', border: '1px dashed var(--accent)', marginBottom: '10px' }} onClick={() => setIsPostModalOpen(true)}>
                       <Plus size={16}/> Post New Drive
                     </button>
-                    <button className="sd-logout-btn" style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', border: '1px dashed rgba(245,158,11,0.4)' }}>
-                      <Megaphone size={16} /> Broadcast Alert
-                    </button>
+                    <button 
+  className="sd-logout-btn" 
+  style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', border: '1px dashed rgba(245,158,11,0.4)' }}
+  onClick={() => setIsBroadcastModalOpen(true)}
+>
+  <Megaphone size={16} /> Broadcast Alert
+</button>
                   </div>
                 </div>
               </motion.div>
