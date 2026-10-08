@@ -13,6 +13,12 @@ const eventSchema = new mongoose.Schema({
   
   // AI Recommendation Tags
   tags: [{ type: String }], 
+
+  targetDepartment: {
+    type: [String],
+    default: ['All'],
+    enum: ['All', 'CSE', 'ISE', 'ECE', 'ME', 'CE', 'AIML', 'CSB', 'CSD']
+  },
   
 
   eventDate: { type: Date, required: true },

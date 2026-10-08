@@ -21,6 +21,8 @@ const companySchema = new mongoose.Schema({
     branches: [String] 
   },
 
+  targetDepartment: { type: [String], default: ['All'] },
+
 
   visitDate: { 
     type: Date, 

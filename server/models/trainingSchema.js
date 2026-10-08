@@ -8,6 +8,12 @@ const trainingSchema = new mongoose.Schema({
   }, 
   
   description: { type: String },
+
+  targetDepartment: {
+    type: [String],
+    default: ['All'],
+    enum: ['All', 'CSE', 'ISE', 'ECE', 'ME', 'CE', 'AIML', 'CSB', 'CSD']
+  },
   
   trainingType: {
     type: String,

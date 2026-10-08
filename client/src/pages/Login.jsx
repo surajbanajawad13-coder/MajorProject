@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { getRoleDashboardPath } from '../roleRoutes';
 
 const Login = () => {
   // Added state variables for inputs
@@ -30,9 +31,7 @@ const Login = () => {
         login(data);
         setloading(false);
 
-        if(data.result.role === 'Student') navigate('/student_dashboard');
-        else if(data.result.role === 'Placement Officer') navigate('/tpo-admin');
-        else if(data.result.role === 'Society Admin') navigate('/society-admin');
+        navigate(getRoleDashboardPath(data.result.role), { replace: true });
     } catch (err) {
         setloading(false);
         toast.error(err.response?.data?.message || "Login failed. Please try again.");
@@ -100,19 +99,21 @@ const Login = () => {
               >
                 <option value="Student">Student</option>
                 <option value="Placement Officer">Placement Officer (TPO)</option>
-                <option value="Department Faculty">Department Faculty</option>
+                <option value="Department Placement Coordinator">Department Placement Coordinator</option>
+                <option value="Faculty">Faculty</option>
                 <option value="Event Coordinator">Event Coordinator</option>
+                {/* <option value="Admin">Admin</option> */}
               </select>
             </div>
 
             {/* USN Field */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">USN</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">USN / username / email</label>
               <input
                 type="text"
                 value={usn}
                 onChange={(e) => setUsn(e.target.value)}
-                placeholder="e.g. 4CB21CS001"
+                placeholder={role === 'Faculty' || role === 'Department Placement Coordinator' ? 'Username or email' : 'USN, username, or email'}
                 required
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
               />

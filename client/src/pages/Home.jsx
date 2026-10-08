@@ -55,7 +55,7 @@ const Home = () => {
               Placements
             </a>
 
-            <a href="#events" className="hover:text-blue-600 transition">
+            <a href=""  onClick={() => navigate("/explore-events")} className="hover:text-blue-600 transition">
               Events
             </a>
 

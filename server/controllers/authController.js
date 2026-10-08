@@ -1,15 +1,23 @@
 const User = require('../models/studentSchema'); // Our Student Schema
+const Faculty = require('../models/facultySchema');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
-    const { usn, password, role } = req.body;
+    const { usn, username, email, identifier, password, role } = req.body;
 
     try {
-        const user = await User.findOne({  
-            usn: usn , 
-            role: role 
-        });
+        const supportedRoles = ['Student', 'Placement Officer', 'Faculty', 'Event Coordinator', 'Admin', 'Department Placement Coordinator'];
+        if (!supportedRoles.includes(role)) {
+            return res.status(400).json({ message: 'Choose a supported account role.' });
+        }
+        const loginIdentifier = (identifier || usn || username || email || '').trim();
+        if (!loginIdentifier || !password) {
+            return res.status(400).json({ message: 'Username/USN and password are required.' });
+        }
+        const user = ['Faculty', 'Department Placement Coordinator'].includes(role)
+            ? await Faculty.findOne({ role, $or: [{ username: loginIdentifier }, { email: loginIdentifier.toLowerCase() }] })
+            : await User.findOne({ role, $or: [{ usn: loginIdentifier.toUpperCase() }, { username: loginIdentifier }, { email: loginIdentifier.toLowerCase() }] });
 
         if (!user) {
             return res.status(404).json({ message: "User not found with this role." });
@@ -22,7 +30,7 @@ exports.login = async (req, res) => {
 
         // 3. Generate JWT Token
         const token = jwt.sign(
-            { id: user._id, role: user.role }, 
+            { id: user._id, role: user.role, department: user.department },
             process.env.JWT_SECRET, 
             { expiresIn: '1h' }
         );
@@ -39,7 +47,7 @@ exports.login = async (req, res) => {
 
 exports.signup=async(req,res)=>{
     try{
-        const { username, email, password, usn, role, skills,
+    const { username, email, password, usn, skills,
       interests,} = req.body;
     if(!username || !email || !password || !usn){
         return res.status(400).json({ message: "All fields are required." });
@@ -58,7 +66,7 @@ exports.signup=async(req,res)=>{
         email,
         password:hashedPassword,
         usn,
-        role:role || 'Student',   
+        role: 'Student',
         skills:skills || [],
         interests:interests || []
     });

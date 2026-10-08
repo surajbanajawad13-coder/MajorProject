@@ -13,10 +13,22 @@ router.post(
   placementController.postNewDrive
 );
 // server/routes/placementRoutes.js
-router.get('/', async (req, res) => {
+router.get('/', verifyTokenAndRole(['Student', 'Placement Officer', 'Admin', 'Department Placement Coordinator']), async (req, res) => {
   try {
     const Company = require('../models/companySchema');
-    const companies = await Company.find().sort({ createdAt: -1 });
+    let query = {};
+    if (req.role === 'Student') {
+      const Student = require('../models/studentSchema');
+      const student = await Student.findById(req.userId).select('department');
+      if (!student) return res.status(404).json({ success: false, error: 'Student profile not found.' });
+      query = { $or: [
+        { targetDepartment: 'All' },
+        { targetDepartment: student.department },
+        { targetDepartment: { $exists: false } },
+        { targetDepartment: { $size: 0 } }
+      ] };
+    }
+    const companies = await Company.find(query).sort({ createdAt: -1 });
     res.json({ success: true, data: companies });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -25,21 +37,35 @@ router.get('/', async (req, res) => {
 // GET /api/placements/:companyId/applicants
 router.get(
   '/:companyId/applicants',
-  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  verifyTokenAndRole(['Placement Officer', 'Admin', 'Department Placement Coordinator']),
   placementController.getDriveApplicants
 );
 
 // PUT /api/placements/:companyId/applicant/:studentId/status
 router.put(
   '/:companyId/applicant/:studentId/status',
-  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  verifyTokenAndRole(['Placement Officer', 'Admin', 'Department Placement Coordinator']),
   placementController.updateApplicantStatus
 );
 
 router.get(
   '/analytics/students',
-  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  verifyTokenAndRole(['Placement Officer', 'Admin', 'Department Placement Coordinator']),
   placementController.getAllStudentsAnalytics
 );
+router.post(
+  '/broadcast',
+  verifyTokenAndRole(['Placement Officer', 'Admin', 'Department Placement Coordinator']),
+  placementController.broadcastAlert
+);
+router.get('/broadcasts', verifyTokenAndRole(['Student', 'Placement Officer', 'Admin', 'Department Placement Coordinator']), async (req, res) => {
+  try {
+    const Broadcast = require('../models/broadcastSchema');
+    const broadcasts = await Broadcast.find().sort({ createdAt: -1 }).limit(5); // Get latest broadcasts
+    res.json({ success: true, data: broadcasts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
 
 module.exports = router;
