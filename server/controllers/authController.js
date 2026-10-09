@@ -45,40 +45,68 @@ exports.login = async (req, res) => {
 };
 
 
-exports.signup=async(req,res)=>{
-    try{
-    const { username, email, password, usn, skills,
-      interests,} = req.body;
-    if(!username || !email || !password || !usn){
-        return res.status(400).json({ message: "All fields are required." });
+exports.signup = async (req, res) => {
+  try {
+    const { username, email, password, usn, skills, interests } = req.body;
+    if (![username, email, password, usn].every(value => typeof value === 'string' && value.trim())) {
+      return res.status(400).json({ message: 'Full name, USN, email, and password are required.' });
     }
-    const existingEmail=await User.findOne({ email });
-    if(existingEmail){
-        return res.status(400).json({ message: "Email already in use." });
-    }
-    const existingUSN=await User.findOne({ usn });
-    if(existingUSN){
-        return res.status(400).json({ message: "USN already in use." });
-    }
-    const hashedPassword= await bcrypt.hash(password,12);
-    const newUser=await User.create({
-        username,
-        email,
-        password:hashedPassword,
-        usn,
-        role: 'Student',
-        skills:skills || [],
-        interests:interests || []
-    });
-    const token=jwt.sign(
-        { id: newUser._id, role: newUser.role },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
-    );
-    const {password:_,...userData}=newUser._doc;
-    res.status(201).json({message: 'Account created successfully',result: userData, token });
 
-    }catch(err){
-        res.status(500).json({ message: "Registration failed." });
+    const normalizedUsername = username.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedUsn = usn.trim().toUpperCase();
+    const existingAccount = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { usn: normalizedUsn },
+        { username: normalizedUsername },
+      ],
+    }).select('email usn username');
+
+    if (existingAccount) {
+      if (existingAccount.email === normalizedEmail) {
+        return res.status(409).json({ message: 'An account with this email already exists. Please log in instead.' });
+      }
+      if (existingAccount.usn === normalizedUsn) {
+        return res.status(409).json({ message: 'An account with this USN already exists. Please log in instead.' });
+      }
+      return res.status(409).json({ message: 'This name is already associated with an account. Please use your full name.' });
     }
-}
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const newUser = await User.create({
+      username: normalizedUsername,
+      email: normalizedEmail,
+      password: hashedPassword,
+      usn: normalizedUsn,
+      role: 'Student',
+      skills: Array.isArray(skills) ? skills : [],
+      interests: Array.isArray(interests) ? interests : [],
+    });
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    const { password: _, ...userData } = newUser._doc;
+    return res.status(201).json({ message: 'Account created successfully', result: userData, token });
+  } catch (error) {
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+      const fieldMessages = {
+        email: 'An account with this email already exists. Please log in instead.',
+        usn: 'An account with this USN already exists. Please log in instead.',
+        username: 'This name is already associated with an account. Please use your full name.',
+      };
+      return res.status(409).json({
+        message: fieldMessages[duplicateField] || 'An account with these details already exists.',
+      });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Please check your signup details and try again.' });
+    }
+
+    console.error('Student signup failed:', error.message);
+    return res.status(500).json({ message: 'Account creation is temporarily unavailable. Please try again later.' });
+  }
+};

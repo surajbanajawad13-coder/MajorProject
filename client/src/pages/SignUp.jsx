@@ -190,9 +190,12 @@ const Signup = () => {
       setLoading(false);
     navigate('/login');
     toast.success('Account Created Successfully!');
-  } catch {
+  } catch (error) {
     setLoading(false);
-    toast.error('Signup failed. Please try again.');
+    toast.error(
+      error.response?.data?.message
+        || 'Could not connect to the signup service. Please try again.'
+    );
   }
   };
 
