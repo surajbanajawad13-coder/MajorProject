@@ -11,7 +11,7 @@
  */
 
 const Student = require('../models/studentSchema');
-const Event = require('../models/eventSchema');
+const Event = require('../models/eventTrainingSchema');
 const Company = require('../models/companySchema');
 
 // GET /api/admin/users?role=&department=&search=
@@ -61,7 +61,7 @@ exports.getUserById = async (req, res) => {
 exports.updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
-    const allowedRoles = ['Student', 'Society Admin', 'Placement Officer', 'Admin'];
+    const allowedRoles = ['Student', 'Placement Officer', 'Event Coordinator', 'Admin'];
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role' });
     }

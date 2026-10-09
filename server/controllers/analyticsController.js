@@ -11,7 +11,7 @@
  */
 
 const Student = require('../models/studentSchema');
-const Event = require('../models/eventSchema');
+const Event = require('../models/eventTrainingSchema');
 const Company = require('../models/companySchema');
 const AnalyticsLog = require('../models/analyticsLogSchema');
 
@@ -19,12 +19,12 @@ const AnalyticsLog = require('../models/analyticsLogSchema');
 // Registrations per event -> feeds a bar/line chart on the Coordinator dashboard.
 exports.getEventParticipationStats = async (req, res) => {
   try {
-    const events = await Event.find({}).select('title eventDate registeredStudents capacity');
+    const events = await Event.find({}).select('title date registeredStudents capacity');
     const data = events.map((e) => ({
       eventId: e._id,
       title: e.title,
-      eventDate: e.eventDate,
-      registrations: e.registeredStudents.length,
+      eventDate: e.date,
+      registrations: e.registeredStudents?.length || 0,
       capacity: e.capacity || null,
     }));
     res.status(200).json({ success: true, data });

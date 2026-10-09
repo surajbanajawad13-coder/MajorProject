@@ -10,12 +10,18 @@
 
 const express = require('express');
 const router = express.Router();
-const { getRecommendations } = require('../controllers/recommendationController');
+const { getRecommendations, getMyStudentAnalysis } = require('../controllers/recommendationController');
 const { verifyTokenAndRole } = require('../middleware/authMiddleware');
 
 // GET /api/recommendations/:userId
 // A student can only fetch their own recommendations; TPO/Admin may
 // look up any learner's recommendations (e.g. for advising purposes).
+router.get(
+  '/analysis',
+  verifyTokenAndRole(['Student']),
+  getMyStudentAnalysis
+);
+
 router.get(
   '/:userId',
   verifyTokenAndRole(['Student', 'Placement Officer', 'Admin']),

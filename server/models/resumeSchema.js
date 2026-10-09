@@ -32,11 +32,15 @@ const resumeSchema = new mongoose.Schema(
     parsedSkills: [{ type: String }],
     programmingLanguages: [{ type: String }],
     tools: [{ type: String }],
+    roleInterestKeywords: [{ type: String }],
     parsedProjects: {
       titles: [{ type: String }],
       keywords: [{ type: String }],
     },
     certifications: [{ type: String }],
+    education: { type: String, default: '' },
+    keywordScore: { type: Number, min: 0, default: 0 },
+    missingSkillFlags: [{ type: String }],
 
     uploadDate: { type: Date, default: Date.now },
   },

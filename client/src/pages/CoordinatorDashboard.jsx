@@ -20,10 +20,15 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import API from '../api';
 
-const API = 'http://localhost:8000';
 const departments = ['CSE', 'ISE', 'ECE', 'ME', 'CE', 'AIML', 'CSB', 'CSD'];
 const emptyForm = { title: '', description: '', type: 'Event', category: 'Workshop', organizer: '', date: '', targetDepartment: ['All'] };
+const localDateTimeMin = () => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().slice(0, 16);
+};
 
 /* ─────────────────────────────────────────────
    Theme Toggle Sub-component
@@ -60,7 +65,7 @@ export default function CoordinatorDashboard() {
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('sd-theme');
-    return saved !== null ? saved === 'dark' : true;
+    return saved !== null ? saved === 'dark' : false;
   });
 
   const toggleTheme = () => {
@@ -416,7 +421,7 @@ export default function CoordinatorDashboard() {
 
                 <div className="pe-field" style={{ marginTop: '12px' }}>
                   <label className="pe-label">Date and Time</label>
-                  <input className="pe-input" required type="datetime-local" min={new Date().toISOString().slice(0, 16)} value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} />
+                  <input className="pe-input" required type="datetime-local" min={localDateTimeMin()} value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} />
                 </div>
 
                 <div className="pe-field" style={{ marginTop: '12px' }}>
@@ -493,7 +498,6 @@ const SectionHeader = ({ icon: Icon, title, sub, color }) => (
    Integrated Shared CSS & Theme Definitions
 ───────────────────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .sd-dark {

@@ -2,9 +2,9 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Admin = require('./models/studentSchema');
+const { getRequiredInitialPassword } = require('./services/seedCredentials');
 
-const mongoUri = process.env.MONGO_URI || process.env.mongo_uri || 'mongodb://localhost:27017/CampusConnect';
-const initialPassword = process.env.ADMIN_INITIAL_PASSWORD || 'admin12345';
+const mongoUri = process.env.mongo_uri || process.env.MONGO_URI || 'mongodb://localhost:27017/CampusConnect';
 
 const adminAccounts = [
   { username: 'Campus Admin One', email: 'admin1@campusconnect.edu', usn: 'ADMIN001' },
@@ -15,6 +15,7 @@ const adminAccounts = [
 
 async function seedAdmins() {
   try {
+    const initialPassword = getRequiredInitialPassword('ADMIN_INITIAL_PASSWORD');
     await mongoose.connect(mongoUri);
     const password = await bcrypt.hash(initialPassword, 12);
     let created = 0;
@@ -25,6 +26,23 @@ async function seedAdmins() {
       });
 
       if (existing) {
+        if (existing.role !== 'Admin') {
+          if (account.usn !== 'ADMIN001') {
+            console.warn(
+              `Skipping ${account.usn}: a matching account already exists with role "${existing.role}".`
+            );
+            continue;
+          }
+
+          existing.role = 'Admin';
+          existing.password = password;
+          await existing.save();
+          created += 1;
+          console.log(
+            `Promoted existing account to Admin. Sign in with its current USN (${existing.usn}), username, or email.`
+          );
+          continue;
+        }
         console.log(`${account.email} already exists; leaving the account unchanged.`);
         continue;
       }

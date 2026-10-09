@@ -3,7 +3,7 @@ CampusConnect - AI-Driven Campus Event & Placement Analytics Portal
 ---------------------------------------------------------------------
 Module: resume_parser.py
 Purpose: Extracts structured data (skills, programming languages, tools,
-         projects, certifications) from an uploaded resume (PDF).
+         projects, certifications, role interests) from uploaded PDF/DOCX files.
 
 Project by: Vikas (USN: 4CB23CS186)
 ---------------------------------------------------------------------
@@ -11,6 +11,8 @@ Project by: Vikas (USN: 4CB23CS186)
 
 import re
 import io
+import zipfile
+import xml.etree.ElementTree as ET
 
 try:
     import pdfplumber
@@ -66,12 +68,22 @@ SOFT_DOMAIN_KEYWORDS = [
     "algorithms", "operating systems", "computer networks",
 ]
 
+ROLE_INTEREST_KEYWORDS = list(dict.fromkeys(SOFT_DOMAIN_KEYWORDS + [
+    "software developer", "software engineer", "web developer",
+    "frontend developer", "front-end developer", "backend developer",
+    "back-end developer", "full stack developer", "data analyst",
+    "data engineer", "machine learning engineer", "ai engineer",
+    "cloud engineer", "devops engineer", "cybersecurity analyst",
+    "mobile app developer", "ui designer", "ux designer",
+]))
+
 CERTIFICATION_KEYWORDS = [
     "nptel", "coursera", "udemy", "aws certified", "azure certified",
     "google certified", "oracle certified", "cisco", "ccna", "comptia",
     "pmp", "certified", "certification", "hackerrank certified",
     "microsoft certified", "ibm", "meta certified", "salesforce certified",
 ]
+GENERIC_CERTIFICATION_KEYWORDS = {"certified", "certification"}
 
 ALL_SKILLS = list(dict.fromkeys(
     PROGRAMMING_LANGUAGES + TOOLS_AND_FRAMEWORKS + SOFT_DOMAIN_KEYWORDS
@@ -113,6 +125,45 @@ def extract_text_from_pdf(file_stream):
             text = ""
 
     return text
+
+
+def extract_text_from_docx(file_bytes):
+    """Extract paragraph text from a DOCX archive using the standard library."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as document:
+            xml_content = document.read("word/document.xml")
+    except (KeyError, zipfile.BadZipFile, OSError) as error:
+        raise ValueError("Could not read DOCX document.") from error
+
+    root = ET.fromstring(xml_content)
+    namespace = {"word": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    paragraphs = []
+    for paragraph in root.findall(".//word:p", namespace):
+        text = "".join(node.text or "" for node in paragraph.findall(".//word:t", namespace))
+        if text.strip():
+            paragraphs.append(text.strip())
+    return "\n".join(paragraphs)
+
+
+def clean_extracted_text(text):
+    """Normalize extracted document text without removing technical punctuation."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\xa0", " ")
+    text = re.sub(r"[^\S\n]+", " ", text)
+    lines = [line.strip(" \t-•|_") for line in text.split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+def extract_document_text(file_stream, filename=None):
+    raw_bytes = file_stream.read()
+    extension = (filename or getattr(file_stream, "filename", "")).lower().rsplit(".", 1)
+    extension = f".{extension[-1]}" if len(extension) == 2 else ".pdf"
+    if extension == ".docx":
+        text = extract_text_from_docx(raw_bytes)
+    elif extension == ".pdf":
+        text = extract_text_from_pdf(io.BytesIO(raw_bytes))
+    else:
+        raise ValueError("Unsupported document format. Upload a PDF or DOCX file.")
+    return clean_extracted_text(text)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -204,6 +255,16 @@ def extract_tools(text):
     return sorted(found)
 
 
+def extract_role_interest_keywords(text):
+    text_lower = text.lower()
+    found = set()
+    for keyword in ROLE_INTEREST_KEYWORDS:
+        pattern = r"(?<![a-zA-Z0-9])" + re.escape(keyword) + r"(?![a-zA-Z0-9])"
+        if re.search(pattern, text_lower):
+            found.add(keyword)
+    return sorted(found)
+
+
 def extract_certifications(text):
     """
     Looks for a 'Certifications' section first; if not found, scans the
@@ -219,12 +280,11 @@ def extract_certifications(text):
             line = line.strip(" -•\t")
             if line and len(line) < 150:
                 results.add(line)
-
-    # Fallback / supplement: keyword scan across full text
-    text_lower = text.lower()
-    for kw in CERTIFICATION_KEYWORDS:
-        if kw in text_lower:
-            results.add(kw)
+    else:
+        text_lower = text.lower()
+        for kw in CERTIFICATION_KEYWORDS:
+            if kw not in GENERIC_CERTIFICATION_KEYWORDS and kw in text_lower:
+                results.add(kw)
 
     return sorted(results)
 
@@ -258,30 +318,79 @@ def extract_projects(text):
     }
 
 
-def parse_resume(file_stream):
+def extract_education(text):
+    return _split_into_sections(text).get("education", "")
+
+
+def parse_resume(file_stream, filename=None):
     """
-    Full pipeline: PDF -> text -> structured fields.
+    Full pipeline: PDF/DOCX -> cleaned text -> structured fields.
     Returns a dict matching the `resumes` Mongoose schema's
     parsed_skills / parsed_projects style fields.
     """
-    text = extract_text_from_pdf(file_stream)
+    try:
+        text = extract_document_text(file_stream, filename)
+    except ValueError as error:
+        return empty_parse_result(str(error))
 
     if not text.strip():
-        return {
-            "extracted_text": "",
-            "parsed_skills": [],
-            "programming_languages": [],
-            "tools": [],
-            "parsed_projects": {"titles": [], "keywords": []},
-            "certifications": [],
-            "error": "Could not extract text from PDF. The file may be a scanned image.",
-        }
+        return empty_parse_result("Could not extract text from this resume. The document may be scanned or unreadable.")
 
+    parsed_skills = extract_skills(text)
+    projects = extract_projects(text)
+    certifications = extract_certifications(text)
     return {
         "extracted_text": text,
-        "parsed_skills": extract_skills(text),
+        "parsed_skills": parsed_skills,
+        "skill_list": parsed_skills,
         "programming_languages": extract_programming_languages(text),
         "tools": extract_tools(text),
-        "parsed_projects": extract_projects(text),
-        "certifications": extract_certifications(text),
+        "role_interest_keywords": extract_role_interest_keywords(text),
+        "parsed_projects": projects,
+        "project_list": projects["titles"],
+        "certifications": certifications,
+        "certification_list": certifications,
+        "education": extract_education(text),
+        "keyword_score": len(parsed_skills),
+        "missing_skill_flags": [],
+    }
+
+
+def empty_parse_result(error):
+    return {
+        "extracted_text": "",
+        "parsed_skills": [],
+        "skill_list": [],
+        "programming_languages": [],
+        "tools": [],
+        "role_interest_keywords": [],
+        "parsed_projects": {"titles": [], "keywords": []},
+        "project_list": [],
+        "certifications": [],
+        "certification_list": [],
+        "education": "",
+        "keyword_score": 0,
+        "missing_skill_flags": [],
+        "error": error,
+    }
+
+
+def parse_job_description(file_stream, filename=None):
+    """Extract structured job requirements from an uploaded PDF or DOCX."""
+    text = extract_document_text(file_stream, filename)
+    if not text:
+        raise ValueError("Could not extract text from this job description. The document may be scanned or unreadable.")
+
+    skills = extract_skills(text)
+    projects = extract_projects(text)
+    certifications = extract_certifications(text)
+    return {
+        "extracted_text": text,
+        "required_skills": skills,
+        "programming_languages": extract_programming_languages(text),
+        "tools": extract_tools(text),
+        "role_interest_keywords": extract_role_interest_keywords(text),
+        "certifications": certifications,
+        "keyword_score": len(skills),
+        "missing_skill_flags": [],
     }

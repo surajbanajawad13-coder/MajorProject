@@ -14,6 +14,21 @@ const companySchema = new mongoose.Schema({
 
   jobRole: { type: String, required: true },
   ctc: String,
+  domain: { type: String, trim: true, default: '' },
+  requiredSkills: [{ type: String, trim: true }],
+  jobDescriptionAnalysis: {
+    extractedText: { type: String, default: '' },
+    requiredSkills: [{ type: String, trim: true }],
+    programmingLanguages: [{ type: String, trim: true }],
+    tools: [{ type: String, trim: true }],
+    roleInterestKeywords: [{ type: String, trim: true }],
+    certifications: [{ type: String, trim: true }],
+    keywordScore: { type: Number, min: 0, default: 0 },
+  },
+  eligibilityYears: [{ type: String, trim: true }],
+  applicationDeadline: { type: Date, default: null },
+  selectionStages: [{ type: String, trim: true }],
+  description: { type: String, default: '' },
   
   eligibilityCriteria: {
     cgpa: { type: Number, default: 0 },

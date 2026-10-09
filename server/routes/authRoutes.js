@@ -20,5 +20,6 @@ exports.authorizeRoles =
 // POST: /api/auth/login
 router.post('/login', login);
 router.post('/signup', signup);
+router.post('/register', signup);
 
 module.exports = router;

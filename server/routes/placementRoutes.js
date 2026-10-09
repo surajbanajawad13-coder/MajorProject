@@ -4,6 +4,10 @@ const placementController = require('../controllers/placementController');
 const { getMyPlacementMatchScores } = require('../controllers/recommendationController');
 const { verifyTokenAndRole } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
+const {
+  buildStudentPlacementQuery,
+  getPlacementEligibilityReason,
+} = require('../services/placementEligibility');
 
 // POST /api/placements
 // Accepts multipart/form-data; field name must match frontend append ('jdFile')
@@ -13,32 +17,46 @@ router.post(
   upload.single('jdFile'), 
   placementController.postNewDrive
 );
+router.put(
+  '/:companyId',
+  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  upload.single('jdFile'),
+  placementController.updateDrive
+);
+router.delete(
+  '/:companyId',
+  verifyTokenAndRole(['Placement Officer', 'Admin']),
+  placementController.deleteDrive
+);
 // server/routes/placementRoutes.js
 router.get('/', verifyTokenAndRole(['Student', 'Placement Officer', 'Admin', 'Department Placement Coordinator']), async (req, res) => {
   try {
     const Company = require('../models/companySchema');
     let query = {};
+    let studentProfile = null;
     if (req.role === 'Student') {
       const Student = require('../models/studentSchema');
-      const student = await Student.findById(req.userId).select('department');
-      if (!student) return res.status(404).json({ success: false, error: 'Student profile not found.' });
-      query = { $or: [
-        { targetDepartment: 'All' },
-        { targetDepartment: student.department },
-        { targetDepartment: { $exists: false } },
-        { targetDepartment: { $size: 0 } }
-      ] };
+      studentProfile = await Student.findById(req.userId).select('department cgpa year');
+      if (!studentProfile) return res.status(404).json({ success: false, error: 'Student profile not found.' });
+      query = buildStudentPlacementQuery(studentProfile);
     }
     const companies = await Company.find(query).sort({ createdAt: -1 });
-    res.json({ success: true, data: companies });
+    const visibleCompanies = studentProfile
+      ? companies.map(company => ({
+        ...company.toObject(),
+        canApply: !getPlacementEligibilityReason(company, studentProfile),
+        eligibilityReason: getPlacementEligibilityReason(company, studentProfile),
+      }))
+      : companies;
+    res.json({ success: true, data: visibleCompanies });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // GET /api/placements/match-scores
-// Returns { companyId: { score, rank_label } } for the logged-in student,
-// so the "Apply" cards can show an AI match score. Placed above the
+// Returns { companyId: { score, rank_label, breakdown } } for the logged-in
+// student so the company cards can explain an AI match. Placed above the
 // '/:companyId/applicants' route so 'match-scores' isn't swallowed as a
 // companyId param.
 router.get(
@@ -80,5 +98,10 @@ router.get('/broadcasts', verifyTokenAndRole(['Student', 'Placement Officer', 'A
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+router.get(
+  '/:companyId',
+  verifyTokenAndRole(['Student', 'Placement Officer', 'Admin', 'Department Placement Coordinator']),
+  placementController.getDrive
+);
 
 module.exports = router;

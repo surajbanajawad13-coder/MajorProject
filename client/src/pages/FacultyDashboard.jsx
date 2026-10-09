@@ -4,8 +4,9 @@ import { Activity, GraduationCap, LayoutDashboard, LogOut, Search, Users, UserRo
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import API_BASE_URL from '../api';
 
-const API = 'http://localhost:8000/api/faculty';
+const API = `${API_BASE_URL}/api/faculty`;
 
 export default function FacultyDashboard() {
   const { user, logout } = useAuth();
@@ -32,7 +33,7 @@ export default function FacultyDashboard() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  const students = dashboard?.students || [];
+  const students = useMemo(() => dashboard?.students || [], [dashboard?.students]);
   const filteredStudents = useMemo(() => students.filter(student => {
     const term = search.trim().toLowerCase();
     const matchesSearch = !term || [student.username, student.email, student.usn].some(value => value?.toLowerCase().includes(term));
@@ -283,7 +284,6 @@ function StatCard({ icon: Icon, label, value, gradient, delay }) {
 }
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .sd-light {

@@ -2,8 +2,9 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Student = require('./models/studentSchema'); // Adjust path if necessary
+const { getRequiredInitialPassword } = require('./services/seedCredentials');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/campusconnect';
+const MONGO_URI = process.env.mongo_uri || process.env.MONGO_URI || 'mongodb://localhost:27017/CampusConnect';
 
 // Department list matching your schema and their respective USN branch codes
 const departmentsConfig = [
@@ -19,6 +20,7 @@ const departmentsConfig = [
 
 const seedStudents = async () => {
   try {
+    const initialPassword = getRequiredInitialPassword('STUDENT_INITIAL_PASSWORD');
     await mongoose.connect(MONGO_URI);
     console.log('Connected to Database for Student Seeding...');
 
@@ -26,7 +28,7 @@ const seedStudents = async () => {
     await Student.deleteMany({ role: 'Student' });
     console.log('Previous student records cleared.');
 
-    const hashedPassword = await bcrypt.hash('student123', 12);
+    const hashedPassword = await bcrypt.hash(initialPassword, 12);
     const studentsToInsert = [];
 
     // Generate 6 students for each department

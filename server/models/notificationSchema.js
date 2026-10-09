@@ -48,11 +48,13 @@ const notificationSchema = new mongoose.Schema(
       default: null,
     },
 
+    dedupeKey: { type: String, default: undefined },
     isRead: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 notificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);

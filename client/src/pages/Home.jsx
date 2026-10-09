@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   Calendar,
@@ -18,9 +19,11 @@ import {
 
 const Home = () => {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const revealTransition = { duration: reduceMotion ? 0.12 : 0.36, ease: [0.22, 1, 0.36, 1] };
 
   return (
-    <div className="bg-[#f5f7fb] text-slate-900 overflow-hidden font-sans">
+    <div className="cc-home bg-[#f5f7fb] text-slate-900 overflow-hidden font-sans">
       {/* ================= NAVBAR ================= */}
       <nav className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
@@ -111,11 +114,13 @@ const Home = () => {
               </div>
 
               <h1 className="text-5xl md:text-7xl font-black leading-tight text-slate-900 mb-6">
-                Never Miss a{" "}
+                Your Campus.
+                <br />
+                Your Career.
+                <br />
                 <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                  Career Beat
-                </span>{" "}
-                Again.
+                  One Platform.
+                </span>
               </h1>
 
               <p className="text-slate-600 text-lg leading-relaxed max-w-xl mb-10">
@@ -127,7 +132,7 @@ const Home = () => {
               <div className="flex flex-wrap gap-4">
                 <button
                   onClick={() => navigate("/signup")}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 transition hover:scale-105 cursor-pointer"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 transition hover:-translate-y-0.5 cursor-pointer"
                 >
                   Get Started
                   <ArrowRight size={20} />
@@ -220,7 +225,14 @@ const Home = () => {
       </section>
 
       {/* ================= FEATURES ================= */}
-      <section id="features" className="py-24">
+      <motion.section
+        id="features"
+        className="py-24"
+        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.12 }}
+        transition={revealTransition}
+      >
         <div className="max-w-7xl mx-auto px-6 md:px-10">
           <div className="text-center mb-20">
             <p className="text-blue-600 font-bold uppercase tracking-widest mb-4">
@@ -287,10 +299,17 @@ const Home = () => {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ================= PLACEMENT STATS ================= */}
-      <section id="placements" className="py-24 bg-white">
+      <motion.section
+        id="placements"
+        className="py-24 bg-white"
+        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.15 }}
+        transition={revealTransition}
+      >
         <div className="max-w-7xl mx-auto px-6 md:px-10">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div className="bg-blue-50 p-10 rounded-3xl">
@@ -326,10 +345,16 @@ const Home = () => {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ================= TESTIMONIALS ================= */}
-      <section className="py-24">
+      <motion.section
+        className="py-24"
+        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.12 }}
+        transition={revealTransition}
+      >
         <div className="max-w-7xl mx-auto px-6 md:px-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-black text-slate-900 mb-4">
@@ -371,10 +396,16 @@ const Home = () => {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ================= CTA ================= */}
-      <section className="py-24 bg-blue-600">
+      <motion.section
+        className="py-24 bg-blue-600"
+        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={revealTransition}
+      >
         <div className="max-w-5xl mx-auto text-center px-6">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
             Ready to Transform Campus Life?
@@ -386,12 +417,12 @@ const Home = () => {
 
           <button
             onClick={() => navigate("/signup")}
-            className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black hover:scale-105 transition cursor-pointer shadow-sm shadow-white/50"
+            className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black hover:-translate-y-0.5 transition cursor-pointer shadow-sm shadow-white/50"
           >
             Join CampusConnect
           </button>
         </div>
-      </section>
+      </motion.section>
 
       {/* ================= FOOTER ================= */}
       <footer

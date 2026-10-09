@@ -11,7 +11,7 @@
  * ---------------------------------------------------------------------
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -268,7 +268,7 @@ const EventModal = ({ onClose, isDark, onSaved, editingEvent, societyId }) => {
 ───────────────────────────────────────────── */
 export default function SocietyDashboard() {
   const { user, logout } = useAuth();
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [events, setEvents] = useState([]);
   const [eventStats, setEventStats] = useState([]);
@@ -498,7 +498,6 @@ export default function SocietyDashboard() {
    classes.
 ───────────────────────────────────────────── */
 const COORD_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .sd-dark {

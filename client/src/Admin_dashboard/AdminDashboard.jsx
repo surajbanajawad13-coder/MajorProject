@@ -44,8 +44,8 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import API from '../api';
 
-const API = 'https://campusconnect-api-nele.onrender.com';
 
 function getToken() {
   const profileString = localStorage.getItem('profile');
@@ -59,7 +59,7 @@ function authHeaders() {
 
 const PIE_COLORS = ['#6366f1', '#f59e0b', '#34d399', '#f87171', '#a78bfa', '#38bdf8'];
 
-const ROLE_OPTIONS = ['Student', 'Society Admin', 'Placement Officer', 'Admin'];
+const ROLE_OPTIONS = ['Student', 'Placement Officer', 'Event Coordinator', 'Admin'];
 
 function useCounter(target, duration = 1200) {
   const [count, setCount] = useState(0);
@@ -125,7 +125,7 @@ const RoleBadge = ({ role }) => {
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [summary, setSummary] = useState(null);
   const [overview, setOverview] = useState(null);
@@ -410,7 +410,6 @@ export default function AdminDashboard() {
 }
 
 const ADMIN_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .ad-dark {

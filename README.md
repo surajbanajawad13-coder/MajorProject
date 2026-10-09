@@ -60,14 +60,11 @@ satisfy the full spec:
     extraction of skills, programming languages, tools, certifications,
     and project titles/keywords (previously a 10-keyword hardcoded list).
   - `recommender.py`: replaced TF-IDF cosine similarity with the exact
-    strict point-scoring rubric:
-    - Matching skill: **+3**
-    - Matching domain interest: **+2**
-    - Matching project keyword: **+2**
-    - Branch/year eligibility match: **+3**
-    - Matching certification: **+1**
-    - CGPA condition met: **+3**
-    - `score > 8` → *highly recommended*, `5–8` → *recommended*, `< 5` → *low priority*
+    fixed 14-point scoring rubric. Each of the six categories is binary and
+    awarded once per opportunity: skill **+3**, domain/interest **+2**,
+    project keyword **+2**, matching branch OR year **+3**, certification
+    **+1**, and meeting the CGPA condition **+3**. Ranks are 9–14 *highly
+    recommended*, 5–8 *recommended*, and 0–4 *low priority*.
   - New combined `POST /recommend` endpoint returning ranked events +
     placements + a merged list.
 
@@ -133,12 +130,12 @@ notifications.
 New endpoint: `GET /api/placements/match-scores` (Student-only). It runs
 the *same* scoring engine used by `/api/recommendations/:userId`
 (`ai/recommender.py`'s point rubric), scoped to placements only, and
-returns `{ companyId: { score, rank_label } }` for the logged-in student.
+returns `{ companyId: { score, rank_label, breakdown } }` for the logged-in
+student, using the latest analyzed resume.
 
 The Student dashboard's "New Opportunities" cards now show a small badge
-— e.g. `14 pts · Highly Recommended` — next to each company, computed from
-the same skill/domain/eligibility/cgpa criteria the company posted, before
-the student decides whether to apply.
+— e.g. `11/14 pts · 79% · Highly Recommended` — next to each company,
+computed from the same fixed scoring rubric used for events and training.
 
 - Backend: `server/controllers/recommendationController.js`
   (`getMyPlacementMatchScores`, reuses the existing `buildProfilePayload`/
@@ -146,9 +143,9 @@ the student decides whether to apply.
   `server/routes/placementRoutes.js`.
 - Frontend: `client/src/student_Dashboard/StudentDashboard.jsx` — fetches
   match scores alongside the existing drives fetch; a `MatchBadge`
-  component renders the score/label on each card. If the AI service is
-  briefly unavailable, cards simply render without the badge rather than
-  breaking the page.
+  component renders the score/label and rubric-category breakdown on each
+  card. If the AI service is briefly unavailable, the dashboard remains
+  usable and reports that scores could not be calculated.
 
 Both were verified against a live Flask instance: a synthetic profile and
 two placements were sent through the same code path the controller uses,
@@ -205,12 +202,14 @@ cd server
 npm install
 # create a .env with:
 #   mongo_uri=mongodb://localhost:27017/campusconnect
-#   JWT_SECRET=your_secret
+#   JWT_SECRET=replace-with-a-random-secret-of-at-least-32-characters
 #   PORT=8000
 #   AI_SERVICE_URL=http://localhost:5000
+#   TPO_INITIAL_PASSWORD=<choose-a-strong-password>
+#   ADMIN_INITIAL_PASSWORD=<choose-a-strong-password>
 npm start               # or: node server.js
-node seedTpo.js         # optional: creates a default Placement Officer login
-node seedAdmin.js       # optional: creates a default Administrator login
+node seedTpo.js         # optional: requires TPO_INITIAL_PASSWORD
+node seedAdmin.js       # optional: requires ADMIN_INITIAL_PASSWORD
 ```
 
 **3. Frontend**
@@ -220,21 +219,158 @@ npm install
 npm run dev              # Vite dev server, default http://localhost:5173
 ```
 
-Default seeded logins (after running the seed scripts):
-- Placement Officer — USN `TPO001` / password `tpo12345`
-- Administrator — USN `ADMIN001` / password `admin12345`
+In local Vite development, frontend API calls (including login, signup, and
+Career Guidance) use `http://localhost:8000`. Set `VITE_API_URL` in the
+frontend environment when using a different backend. Production builds require
+an explicit `VITE_API_URL`; the frontend will not silently call an old hosted
+API.
+
+**4. Optional tests**
+```bash
+cd server
+npm test
+
+cd ../ai
+python -m unittest discover -s tests -v
+```
+
+Seed scripts require a corresponding `*_INITIAL_PASSWORD` environment variable
+and do not contain default account passwords. Run them only against the
+intended database. Run `node seedAdmin.js` from the `server` directory so it
+loads that directory's `.env` and uses the same MongoDB connection as the
+backend. Existing Admin accounts are not reset by the seed script.
 
 Society Admin (Coordinator) and Student accounts are created via the normal
 `/signup` flow, selecting the appropriate role.
+
+## Hosting deployment
+
+The repository includes a Render Blueprint in `render.yaml` for the Node API
+and private Python AI service, plus `client/vercel.json` for React Router
+history fallback on Vercel. MongoDB is hosted separately on MongoDB Atlas.
+
+### 1. Prepare MongoDB Atlas
+
+Create a production database and database user in Atlas. Add the hosting
+provider's outbound addresses to the Atlas network access list, and keep the
+connection string private. Do not commit credentials or place them in
+frontend environment variables.
+
+### 2. Deploy the backend and AI service to Render
+
+Connect the GitHub repository to Render and create a Blueprint deployment from
+`render.yaml`. The Blueprint creates:
+
+- `campusconnect-api` — Express API with `/api/test` health check.
+- `campusconnect-ai` — private Flask/Gunicorn service, reachable only by the
+  API over Render's private network.
+- A persistent disk mounted at `/var/data` for uploaded resumes and JDs.
+
+Set the `mongo_uri` value in the API service to the Atlas connection string.
+Once the Vercel site exists, set `CORS_ORIGINS` to its exact origin, without a
+trailing slash (for example `https://campusconnect.example.edu`). Add each
+production custom domain explicitly, comma-separated. Configure email
+variables only if email delivery is enabled. Render generates `JWT_SECRET`;
+keep it private.
+
+Seed scripts are not run automatically by deployment. If you intentionally run
+one against production, first set its matching `*_INITIAL_PASSWORD` variable
+to a unique, strong value in Render. Do not seed demo students, faculty, or
+events into a live college database.
+
+The API disk keeps uploaded files between deploys, but it is attached to one
+API instance. This initial setup is not horizontally scalable. Before adding
+multiple API instances, move uploads to shared object storage such as
+Cloudinary or S3 and update the application to use it.
+
+### 3. Deploy the frontend to Vercel
+
+Import the same repository into Vercel and set the project root to `client`.
+Use `npm run build` as the build command and `dist` as the output directory.
+Set this build-time environment variable to the public Render API URL:
+
+```text
+VITE_API_URL=https://<your-campusconnect-api>.onrender.com
+```
+
+After deployment, copy the Vercel site's exact origin into Render's
+`CORS_ORIGINS` and redeploy the API. Set Vercel environment variables before
+building; the API URL is embedded in the generated frontend bundle.
+
+### 4. Verify deployment
+
+1. Open `https://<your-campusconnect-api>.onrender.com/api/test` and confirm
+   the API health response.
+2. Sign in through the Vercel URL and verify each role's permitted dashboard.
+3. Upload a PDF/DOCX resume and a job description; confirm uploaded documents
+   remain accessible after an API redeploy.
+4. Test AI recommendations, event registration, placement eligibility, and
+   notification flows against production data.
+5. Seed only intended accounts, from the `server` directory, after setting
+   the production database URI. Never seed test users/events into a live
+   college database.
+
+Use `server/.env.example` and `client/.env.example` as variable-name
+references. The Render Blueprint provisions service settings, but secrets and
+the Atlas connection string must be added through the hosting dashboards.
+
+## Additional implementation details
+
+- The student profile editor saves year, skills, interests, certifications,
+  and project titles. Selecting a resume and saving the profile also uploads
+  it for analysis.
+- Resume analysis accepts PDF and DOCX and persists extracted education,
+  skills, programming languages, tools/frameworks, role-interest keywords,
+  projects, certifications, cleaned text, keyword counts, and opportunity-based
+  missing-skill flags. The parse response includes both descriptive fields
+  (`parsed_skills`, `parsed_projects`) and the requested aliases
+  (`skill_list`, `project_list`, `certification_list`).
+- Placement-drive PDF/DOCX files are parsed when posted. Extracted job skills,
+  role-interest keywords, certification mentions, and cleaned JD text are saved
+  separately on the company record and passed to the same recommendation
+  scorer used by student recommendations. Matching skills/projects/interests
+  can therefore distinguish a candidate from a matching JD versus an unrelated
+  one. Scanned or unreadable documents return an explicit analysis error rather
+  than silently creating an unscored drive. Older placement records are
+  re-analyzed on the first recommendation request when their original JD is
+  still present in the local uploads folder.
+- Eligibility and CGPA points are awarded only when the opportunity defines
+  the corresponding requirement and the student satisfies it; unrestricted
+  or unspecified criteria do not award baseline points.
+- Every student/opportunity score uses the same fixed 14-point rubric:
+  skills +3, domain/interest +2, project keyword +2, matching branch or year
+  +3, certification +1, and meeting the CGPA condition +3. Each category is
+  binary (awarded once if any relevant match exists), so repeated matching
+  skills, interests, projects, or certifications cannot inflate the score.
+  Relevance is `score / 14 * 100`; ranks are 9–14 Highly Recommended, 5–8
+  Recommended, and 0–4 Low Priority. Eligibility and application rules are
+  still enforced separately before students can register or apply.
+- Event/training and placement APIs include detail, update, and delete
+  routes; eligibility is checked when students list opportunities, register,
+  or apply.
+- Student endpoints include `GET /api/recommendations/:userId`,
+  `GET /api/career-guidance/:userId`, `GET /api/skill-gap/:userId`,
+  `GET /api/profile/:id`, and in-app notifications. New event/drive and
+  approaching application/registration deadlines can create in-app alerts.
+- A student-only Career Guidance page shows resume section coverage, skill
+  gaps based on current opportunities, and ranked event/placement
+  recommendations. The administrator login option opens the existing
+  user-management and analytics dashboard.
+- The student dashboard's **AI & Analysis** section uses
+  `GET /api/recommendations/analysis` to show parsed resume/profile signals,
+  rubric explanations, missing requirements, opportunity relevance
+  percentages, and whether the student can register for each event. Relevance
+  is the achieved rubric score divided by the fixed 14-point maximum;
+  registration eligibility is checked
+  separately using the same profile/resume skill rules as the registration API.
 
 ---
 
 ## Notes / next steps
 
 - `AI_SERVICE_URL` defaults to `http://localhost:5000` if unset.
-- The recommendation route currently sends `resume: null` to the AI
-  service — wire up a persisted "latest resume" reference per student
-  (the `resumes` collection) to also factor resume-derived skills into
-  live recommendations, not just skills typed into the profile form.
-- CORS is currently wide open (`cors("*")`) for local development; lock
-  this down before any real deployment.
+- Use a MongoDB database containing the student, faculty, event/training,
+  placement, resume, notification, and analytics collections. Existing seed
+  scripts should be run only against the intended development database.
+- CORS origins are configurable with `CORS_ORIGINS`; production startup
+  requires explicit allowed origins.

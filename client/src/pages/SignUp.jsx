@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import API from '../api';
 
 import {
   Eye,
@@ -12,10 +14,12 @@ import {
   ArrowLeft,
   Check,
   X,
+  LoaderCircle,
 } from 'lucide-react';
 
 const Signup = () => {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
 
   // =========================
   // STATES
@@ -37,6 +41,13 @@ const Signup = () => {
   // CUSTOM INPUTS
   const [customSkill, setCustomSkill] = useState('');
   const [customInterest, setCustomInterest] = useState('');
+  const passwordStrength = [
+    password.length >= 8,
+    /[A-Z]/.test(password) && /[a-z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ].filter(Boolean).length;
+  const strengthLabels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong'];
 
   // =========================
   // DEFAULT DATA
@@ -175,19 +186,18 @@ const Signup = () => {
        skills: selectedSkills,
        interests: selectedInterests,
     };
-    console.log(signupData);
-    const { data } = await axios.post('https://campusconnect-api-nele.onrender.com/api/auth/signup', signupData);
+    await axios.post(`${API}/api/auth/signup`, signupData);
       setLoading(false);
     navigate('/login');
     toast.success('Account Created Successfully!');
-  } catch (err) {
+  } catch {
     setLoading(false);
     toast.error('Signup failed. Please try again.');
   }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
+    <div className="cc-auth-page min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
 
       {/* ========================= */}
       {/* BACK BUTTON */}
@@ -205,12 +215,17 @@ const Signup = () => {
       {/* ========================= */}
       {/* MAIN CONTAINER */}
       {/* ========================= */}
-      <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-6xl w-full min-h-[760px] overflow-hidden">
+      <motion.div
+        className="cc-auth-shell bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-6xl w-full min-h-[760px] overflow-hidden"
+        initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+      >
 
         {/* ========================= */}
         {/* LEFT SIDE */}
         {/* ========================= */}
-        <div className="md:w-5/12 bg-blue-500 p-10 text-white flex flex-col justify-center">
+        <div className="cc-auth-brand md:w-5/12 bg-blue-500 p-10 text-white flex flex-col justify-center">
 
           <div>
             <h2 className="text-5xl font-bold mb-6 leading-tight">
@@ -258,7 +273,7 @@ const Signup = () => {
         {/* ========================= */}
         {/* RIGHT SIDE */}
         {/* ========================= */}
-        <div className="md:w-7/12 p-10 md:p-14 flex flex-col justify-center">
+        <div className="cc-auth-content md:w-7/12 p-10 md:p-14 flex flex-col justify-center">
 
           {/* TOP */}
           <div className="flex items-center justify-between mb-10">
@@ -282,14 +297,20 @@ const Signup = () => {
           {/* ========================= */}
           {/* FORM */}
           {/* ========================= */}
-          <form
-            className="space-y-6"
-            onSubmit={handleSubmit}
-          >
+          <form onSubmit={handleSubmit}>
 
             {/* ================================================= */}
             {/* STEP 1 */}
             {/* ================================================= */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={step}
+                className="space-y-6"
+                initial={{ opacity: 0, x: reduceMotion ? 0 : 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: reduceMotion ? 0 : -8 }}
+                transition={{ duration: reduceMotion ? 0.12 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
             {step === 1 ? (
               <>
                 {/* NAME + USN */}
@@ -382,6 +403,32 @@ const Signup = () => {
                     )}
                   </button>
                 </div>
+                <AnimatePresence initial={false}>
+                  {password && (
+                    <motion.div
+                      className="-mt-4"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: reduceMotion ? 0.12 : 0.18 }}
+                      aria-live="polite"
+                    >
+                      <div className="flex gap-1" aria-label={`Password strength: ${strengthLabels[passwordStrength]}`}>
+                        {[1, 2, 3, 4].map(level => (
+                          <span
+                            key={level}
+                            className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                              passwordStrength >= level
+                                ? passwordStrength < 2 ? 'bg-red-400' : passwordStrength < 3 ? 'bg-amber-400' : 'bg-emerald-500'
+                                : 'bg-slate-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">{strengthLabels[passwordStrength]}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* CONTINUE */}
                 <button
@@ -612,12 +659,14 @@ const Signup = () => {
                     className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 transition-all hover:bg-blue-600 active:scale-[0.98]
              disabled:bg-blue-400 disabled:cursor-not-allowed disabled:pointer-events-none disabled:scale-100 disabled:shadow-none"
                   >
-                    {loading? "Creating Account..." : "Create Account"}
+                    {loading ? <span className="inline-flex items-center justify-center gap-2"><LoaderCircle size={18} className="cc-spinner" />Creating Account...</span> : "Create Account"}
                   </button>
 
                 </div>
               </>
             )}
+              </motion.div>
+            </AnimatePresence>
           </form>
 
           {/* LOGIN LINK */}
@@ -631,7 +680,7 @@ const Signup = () => {
             </a>
           </p>
         </div>
-      </div>
+        </motion.div>
     </div>
   );
 };

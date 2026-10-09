@@ -15,6 +15,7 @@ const COORD_OR_ADMIN = ['Society Admin', 'Placement Officer', 'Admin'];
 
 router.get('/events', verifyTokenAndRole(COORD_OR_ADMIN), analyticsController.getEventParticipationStats);
 router.get('/placements', verifyTokenAndRole(COORD_OR_ADMIN), analyticsController.getPlacementApplicationStats);
+router.get('/summary', verifyTokenAndRole(COORD_OR_ADMIN), analyticsController.getPlatformOverview);
 router.get('/overview', verifyTokenAndRole(['Admin']), analyticsController.getPlatformOverview);
 router.get('/activity', verifyTokenAndRole(['Admin']), analyticsController.getRecentActivity);
 

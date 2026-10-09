@@ -2,8 +2,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure uploads/resumes directory exists
-const uploadDir = path.join(__dirname, '../uploads/resumes');
+const uploadRoot = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+const uploadDir = path.join(uploadRoot, 'resumes');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -21,10 +21,10 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-  const allowed = ['.pdf', '.doc', '.docx'];
+  const allowed = ['.pdf', '.docx'];
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowed.includes(ext)) cb(null, true);
-  else cb(new Error('Only PDF, DOC, and DOCX files are allowed'), false);
+  else cb(new Error('Only PDF and DOCX files are allowed'), false);
 };
 
 const upload = multer({

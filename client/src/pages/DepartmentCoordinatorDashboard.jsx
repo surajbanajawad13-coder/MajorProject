@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,9 +28,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../context/AuthContext';
-
-
-const API = 'http://localhost:8000';
+import API from '../api';
 
 
 // ============================================================
@@ -44,7 +42,6 @@ function useCounter(target, duration = 1200) {
     const numericTarget = Number(target) || 0;
 
     if (numericTarget === 0) {
-      setCount(0);
       return;
     }
 
@@ -69,7 +66,7 @@ function useCounter(target, duration = 1200) {
     return () => clearInterval(timer);
   }, [target, duration]);
 
-  return count;
+  return (Number(target) || 0) ? count : 0;
 }
 
 
@@ -314,13 +311,13 @@ const PostDriveModal = ({
 
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
-      toast.error('Please upload a PDF file.');
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      toast.error('Please upload a PDF or DOCX file.');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('PDF size must be less than 5MB.');
+      toast.error('File size must be less than 5MB.');
       return;
     }
 
@@ -714,7 +711,7 @@ const PostDriveModal = ({
               <input
                 ref={fileRef}
                 type="file"
-                accept=".pdf,application/pdf"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 style={{
                   display: 'none'
                 }}
@@ -870,7 +867,7 @@ const ApplicantsModal = ({
     return () => {
       cancelled = true;
     };
-  }, [companyId]);
+  }, [company, companyId]);
 
   const handleStatusChange = async (
     studentId,
@@ -2624,7 +2621,6 @@ const activeDrives =
 
 const STYLES = `
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 
 *,

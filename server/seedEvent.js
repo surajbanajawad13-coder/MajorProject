@@ -2,7 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const EventTraining = require('./models/eventTrainingSchema'); 
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/campusconnect';
+const MONGO_URI = process.env.mongo_uri || process.env.MONGO_URI || 'mongodb://localhost:27017/CampusConnect';
 
 const dummyEvents = [
   {

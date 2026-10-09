@@ -2,13 +2,14 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Faculty = require('./models/facultySchema');
+const { getRequiredInitialPassword } = require('./services/seedCredentials');
 
 const departments = ['CSE', 'ISE', 'ECE', 'ME', 'CE'];
-const initialPassword = process.env.COORDINATOR_INITIAL_PASSWORD || 'coordinator12345';
 
 async function seedDepartmentCoordinators() {
   try {
-    await mongoose.connect(process.env.MONGO_URI || process.env.mongo_uri || 'mongodb://localhost:27017/CampusConnect');
+    const initialPassword = getRequiredInitialPassword('COORDINATOR_INITIAL_PASSWORD');
+    await mongoose.connect(process.env.mongo_uri || process.env.MONGO_URI || 'mongodb://localhost:27017/CampusConnect');
     const password = await bcrypt.hash(initialPassword, 12);
 
     for (const department of departments) {

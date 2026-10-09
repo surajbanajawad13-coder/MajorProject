@@ -7,6 +7,19 @@ const Training = require('../models/trainingSchema.js');
 const path = require('path');
 const fs = require('fs');
 
+exports.getStudentProfile = async (req, res) => {
+  try {
+    const student = await Student.findById(req.userId)
+      .select('-password')
+      .populate('registeredEvents')
+      .populate('appliedCompanies.companyId');
+    if (!student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
+    return res.json({ success: true, data: student });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Unable to load learner profile.' });
+  }
+};
+
 // ─────────────────────────────────────────────
 // 1. Get Complete Student Dashboard Data
 // ─────────────────────────────────────────────
@@ -40,8 +53,11 @@ exports.getStudentDashboard = async (req, res) => {
           role: student.role,
           department,
           cgpa: student.cgpa,
+          year: student.year,
           skills: student.skills,
           interests: student.interests,
+          certifications: student.certifications,
+          projects: student.projects,
           resumeUrl: student.resumeUrl,
           resumeOriginalName: student.resumeOriginalName,
         },
@@ -70,18 +86,41 @@ exports.getStudentDashboard = async (req, res) => {
 // ─────────────────────────────────────────────
 exports.updateStudentProfile = async (req, res) => {
   try {
-    const { username, email, skills, interests, cgpa, department } = req.body;
+    const { username, email, skills, interests, certifications, projects, cgpa, department, year } = req.body;
     // Parse skills / interests – they come as JSON strings from FormData
     const parsedSkills    = skills    ? JSON.parse(skills).map(s => s.toLowerCase().trim())    : undefined;
     const parsedInterests = interests ? JSON.parse(interests).map(i => i.toLowerCase().trim()) : undefined;
+    const parsedCertifications = certifications
+      ? JSON.parse(certifications).map(value => String(value).trim()).filter(Boolean)
+      : undefined;
+    const parsedProjects = projects
+      ? JSON.parse(projects).map(project => typeof project === 'string'
+        ? { title: project.trim(), keywords: [] }
+        : { title: String(project.title || '').trim(), keywords: (project.keywords || []).map(value => String(value).trim()).filter(Boolean) })
+        .filter(project => project.title)
+      : undefined;
 
     const updateFields = {};
     if (parsedSkills    !== undefined) updateFields.skills    = parsedSkills;
     if (parsedInterests !== undefined) updateFields.interests = parsedInterests;
+    if (parsedCertifications !== undefined) updateFields.certifications = parsedCertifications;
+    if (parsedProjects !== undefined) updateFields.projects = parsedProjects;
     if (username?.trim()) updateFields.username = username.trim();
     if (email?.trim())    updateFields.email    = email.trim().toLowerCase();
-    if (cgpa)              updateFields.cgpa     = parseFloat(cgpa);
+    if (cgpa !== undefined && cgpa !== '') {
+      const numericCgpa = Number(cgpa);
+      if (!Number.isFinite(numericCgpa) || numericCgpa < 0 || numericCgpa > 10) {
+        return res.status(400).json({ success: false, message: 'CGPA must be between 0 and 10.' });
+      }
+      updateFields.cgpa = numericCgpa;
+    }
     if (department)        updateFields.department = department;
+    if (year !== undefined) {
+      if (!['', '1', '2', '3', '4'].includes(String(year))) {
+        return res.status(400).json({ success: false, message: 'Year must be between 1 and 4.' });
+      }
+      updateFields.year = String(year);
+    }
 
     // Handle resume upload
     if (req.file) {
@@ -121,6 +160,9 @@ exports.updateStudentProfile = async (req, res) => {
         resumeOriginalName: updatedStudent.resumeOriginalName,
         cgpa:               updatedStudent.cgpa,
         department:         updatedStudent.department,
+        year:               updatedStudent.year,
+        certifications:     updatedStudent.certifications,
+        projects:           updatedStudent.projects,
       },
     });
   } catch (err) {
@@ -135,16 +177,29 @@ exports.applyForDrive = async (req, res) => {
     const studentId = req.userId; // safely pulled from middleware
     const { companyId } = req.body;
 
-    const student = await Student.findById(studentId);
+    const student = await Student.findById(studentId).select('department year cgpa appliedCompanies');
     if (!student) {
       return res.status(404).json({ success: false, error: 'Student not found' });
     }
 
     const Company = require('../models/companySchema');
-    const drive = await Company.findById(companyId).select('targetDepartment');
+    const drive = await Company.findById(companyId).select('targetDepartment eligibilityCriteria applicationDeadline eligibilityYears');
     if (!drive) return res.status(404).json({ success: false, error: 'Placement drive not found.' });
     if (drive.targetDepartment?.length && !drive.targetDepartment.includes('All') && !drive.targetDepartment.includes(student.department)) {
       return res.status(403).json({ success: false, error: 'This placement drive is not available to your department.' });
+    }
+    if (student.cgpa < (drive.eligibilityCriteria?.cgpa || 0)) {
+      return res.status(403).json({ success: false, error: 'Your CGPA does not meet this placement drive’s requirement.' });
+    }
+    const eligibleBranches = drive.eligibilityCriteria?.branches || [];
+    if (eligibleBranches.length && !eligibleBranches.includes('All') && !eligibleBranches.includes(student.department)) {
+      return res.status(403).json({ success: false, error: 'Your department is not eligible for this placement drive.' });
+    }
+    if (drive.eligibilityYears?.length && !drive.eligibilityYears.includes(String(student.year || ''))) {
+      return res.status(403).json({ success: false, error: 'Your year of study is not eligible for this placement drive.' });
+    }
+    if (drive.applicationDeadline && drive.applicationDeadline <= new Date()) {
+      return res.status(400).json({ success: false, error: 'The application deadline has passed.' });
     }
 
     // Safely check if already applied (handles potential nulls)

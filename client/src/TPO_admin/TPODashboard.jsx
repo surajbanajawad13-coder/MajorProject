@@ -22,8 +22,8 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import API from '../api';
 
-const API = 'https://campusconnect-api-nele.onrender.com';
 
 function useCounter(target, duration = 1200) {
   const [count, setCount] = useState(0);
@@ -176,12 +176,12 @@ const PostDriveModal = ({ onClose, isDark, onDrivePosted }) => {
             <input className="pe-input" placeholder="CSE, ISE, ECE" value={formData.branches} onChange={e => setFormData({...formData, branches: e.target.value})} />
           </div>
           <div className="pe-field" style={{ gridColumn: 'span 2', marginTop: '8px' }}>
-             <label className="pe-label">Job Description (PDF)</label>
+             <label className="pe-label">Job Description (PDF or DOCX)</label>
              <div className={`pe-upload-zone ${jdFile ? 'pe-upload-filled' : ''}`} onClick={() => fileRef.current.click()}>
-                <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setJdFile(e.target.files[0])} />
+                <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={e => setJdFile(e.target.files[0])} />
                 <Upload size={24} className="pe-upload-icon" />
                 <p className="pe-upload-title">{jdFile ? jdFile.name : 'Upload JD Document'}</p>
-                <p className="pe-upload-sub">Click to browse • Max 5MB</p>
+                <p className="pe-upload-sub">PDF or DOCX • Max 5MB</p>
              </div>
           </div>
         </div>
@@ -382,9 +382,10 @@ const TPODashboard = () => {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [studentsList, setStudentsList] = useState([]);
-  const [studentFilter, setStudentFilter] = useState({ branch: '', minCgpa: 0 });
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState('');
 
   const fetchCompanies = async () => {
     try {
@@ -402,6 +403,29 @@ const TPODashboard = () => {
       }
     } catch (err) {
       console.error('Fetch Companies Error:', err);
+    }
+  };
+
+  const fetchStudentsAnalytics = async () => {
+    setStudentsLoading(true);
+    setStudentsError('');
+    try {
+      const profileString = localStorage.getItem('profile');
+      const token = profileString ? JSON.parse(profileString).token : null;
+      if (!token) throw new Error('Your login session has expired. Please sign in again.');
+
+      const response = await axios.get(`${API}/api/placements/analytics/students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || response.data?.error || 'Student analytics were not returned.');
+      }
+      setStudents(response.data.data || []);
+    } catch (error) {
+      console.error('Student placement analytics error:', error);
+      setStudentsError(error.response?.data?.message || error.response?.data?.error || error.message || 'Unable to load student analytics.');
+    } finally {
+      setStudentsLoading(false);
     }
   };
 
@@ -450,7 +474,10 @@ const TPODashboard = () => {
         </div>
         <nav className="sd-nav">
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setActiveTab(id)} className={`sd-nav-item ${activeTab === id ? 'sd-nav-active' : ''}`}>
+            <button key={id} onClick={() => {
+              setActiveTab(id);
+              if (id === 'students') fetchStudentsAnalytics();
+            }} className={`sd-nav-item ${activeTab === id ? 'sd-nav-active' : ''}`}>
               <Icon size={18} />
               <span>{label}</span>
               {activeTab === id && <div className="sd-nav-indicator" />}
@@ -531,16 +558,15 @@ const TPODashboard = () => {
                         <p className="sd-card-sub">Administrative tools</p>
                       </div>
                     </div>
-                    <button className="sd-logout-btn" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)', border: '1px dashed var(--accent)', marginBottom: '10px' }} onClick={() => setIsPostModalOpen(true)}>
+                    <button className="sd-quick-action sd-quick-action-primary" onClick={() => setIsPostModalOpen(true)}>
                       <Plus size={16}/> Post New Drive
                     </button>
-                    <button 
-  className="sd-logout-btn" 
-  style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', border: '1px dashed rgba(245,158,11,0.4)' }}
-  onClick={() => setIsBroadcastModalOpen(true)}
->
-  <Megaphone size={16} /> Broadcast Alert
-</button>
+                    <button
+                      className="sd-quick-action sd-quick-action-secondary"
+                      onClick={() => setIsBroadcastModalOpen(true)}
+                    >
+                      <Megaphone size={16} /> Broadcast Alert
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -618,8 +644,48 @@ const TPODashboard = () => {
             {activeTab === 'students' && (
               <motion.div key="students" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
                 <div className="sd-card">
-                  <h3 className="sd-card-title">Student Placement Analytics</h3>
-                  <p className="sd-card-sub">Student registration and application filtering overview will be populated here.</p>
+                  <div className="sd-card-header" style={{ justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 className="sd-card-title">Student Placement Analytics</h3>
+                      <p className="sd-card-sub">{students.length} student profiles</p>
+                    </div>
+                    <button className="pe-btn-save" style={{ padding: '8px 12px' }} onClick={fetchStudentsAnalytics} disabled={studentsLoading}>
+                      {studentsLoading ? 'Loading…' : 'Refresh'}
+                    </button>
+                  </div>
+                  {studentsError && <p role="alert" style={{ color: '#b91c1c', fontSize: '13px' }}>{studentsError}</p>}
+                  {studentsLoading ? (
+                    <p style={{ color: 'var(--text-sub)', fontSize: '13px' }}>Loading student analytics…</p>
+                  ) : studentsError ? null : students.length ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="sd-table">
+                        <thead>
+                          <tr>
+                            <th>Student</th>
+                            <th>USN</th>
+                            <th>Department</th>
+                            <th>CGPA</th>
+                            <th>Applications</th>
+                            <th>Placement status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {students.map(student => (
+                            <tr key={student._id}>
+                              <td>{student.username}<br /><small>{student.email}</small></td>
+                              <td>{student.usn}</td>
+                              <td>{student.department}</td>
+                              <td>{Number(student.cgpa || 0).toFixed(2)}</td>
+                              <td>{student.totalApplied}</td>
+                              <td>{student.status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--text-sub)', fontSize: '13px' }}>No student records are available.</p>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -634,7 +700,6 @@ const TPODashboard = () => {
 };
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .sd-dark {
@@ -724,7 +789,22 @@ const STYLES = `
   .sd-card-header { display: flex; align-items: center; gap: 12px; }
   .sd-card-icon { width: 38px; height: 38px; border-radius: 11px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; color: var(--icon-color); }
   .sd-card-title { font-size: 14px; font-weight: 700; color: var(--text-head); }
-  .sd-card-sub { font-size: 11px; color: var(--text-dim); }
+  .sd-card-sub { font-size: 11px; color: var(--text-sub); }
+  .sd-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+  .sd-table th { padding: 11px 10px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .sd-table td { padding: 11px 10px; color: var(--text-body); border-bottom: 1px solid var(--border); }
+  .sd-table td small { color: var(--text-muted); }
+  .sd-quick-action { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease; }
+  .sd-quick-action:hover { transform: translateY(-1px); }
+  .sd-quick-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sd-quick-action-primary { margin-bottom: 10px; border: 1px dashed #4f46e5; background: rgba(99,102,241,0.08); color: #4338ca; }
+  .sd-quick-action-primary:hover { background: rgba(99,102,241,0.14); }
+  .sd-quick-action-secondary { border: 1px dashed #b45309; background: rgba(245,158,11,0.1); color: #92400e; }
+  .sd-quick-action-secondary:hover { background: rgba(245,158,11,0.16); }
+  .sd-dark .sd-quick-action-primary { border-color: #818cf8; color: #c7d2fe; }
+  .sd-dark .sd-quick-action-primary:hover { background: rgba(99,102,241,0.2); }
+  .sd-dark .sd-quick-action-secondary { border-color: #fbbf24; color: #fcd34d; }
+  .sd-dark .sd-quick-action-secondary:hover { background: rgba(245,158,11,0.18); }
   .sd-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .sd-mini-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .sd-mini-dot { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }

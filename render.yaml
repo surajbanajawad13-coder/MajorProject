@@ -1,0 +1,53 @@
+services:
+  - type: pserv
+    name: campusconnect-ai
+    runtime: python
+    plan: starter
+    rootDir: ai
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PORT
+        value: 10000
+
+  - type: web
+    name: campusconnect-api
+    runtime: node
+    plan: starter
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/test
+    disk:
+      name: campusconnect-uploads
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: AI_SERVICE_URL
+        value: http://campusconnect-ai:10000
+      - key: mongo_uri
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_INITIAL_PASSWORD
+        sync: false
+      - key: EVENT_COORDINATOR_INITIAL_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false

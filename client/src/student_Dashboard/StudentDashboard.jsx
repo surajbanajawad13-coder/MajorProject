@@ -32,13 +32,15 @@ import {
   Download,
   User,
   Loader2,
+  Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import API from '../api';
 
-const API = 'https://campusconnect-api-nele.onrender.com';
 
 /* ─────────────────────────────────────────────
    Helper: get auth token
@@ -170,6 +172,9 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
   const [interests, setInterests] = useState(profile.interests || []);
   const [cgpa, setCgpa] = useState(profile.cgpa || '');
   const [department, setDepartment] = useState(profile.department || 'CSE');
+  const [year, setYear] = useState(profile.year || '');
+  const [certifications, setCertifications] = useState(profile.certifications || []);
+  const [projects, setProjects] = useState((profile.projects || []).map(project => project.title || project));
   const [resumeFile, setResumeFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -188,15 +193,35 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
       fd.append('interests', JSON.stringify(interests));
       fd.append('cgpa', cgpa);
       fd.append('department', department);
-      if (resumeFile) fd.append('resume', resumeFile);
-
+      fd.append('year', year);
+      fd.append('certifications', JSON.stringify(certifications));
+      fd.append('projects', JSON.stringify(projects.map(title => ({ title, keywords: [] }))));
       const res = await axios.put(`${API}/api/student/profile`, fd, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.data?.success) {
-        setMsg({ type: 'success', text: 'Profile updated successfully! ✓' });
-        onSaved(res.data.data);
+        let savedProfile = res.data.data;
+        let analysisFailed = false;
+        if (resumeFile) {
+          const resumeForm = new FormData();
+          resumeForm.append('resume', resumeFile);
+          try {
+            const analysis = await axios.post(`${API}/api/student/resume/analyze`, resumeForm, {
+              headers: { Authorization: 'Bearer ' + token },
+            });
+            savedProfile = { ...savedProfile, ...analysis.data.data };
+            toast.success('Resume uploaded and analyzed.');
+          } catch (analysisError) {
+            analysisFailed = true;
+            toast.error(analysisError.response?.data?.message || 'Profile saved, but resume analysis failed.');
+          }
+        }
+        setMsg({
+          type: analysisFailed ? 'error' : 'success',
+          text: analysisFailed ? 'Profile saved, but resume analysis failed.' : resumeFile ? 'Profile saved. Resume analysis is complete.' : 'Profile updated successfully! ✓',
+        });
+        onSaved(savedProfile);
         setTimeout(onClose, 1500);
       } else {
         setMsg({ type: 'error', text: res.data?.error || 'Update failed.' });
@@ -290,6 +315,16 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
                   </select>
                 </div>
               </div>
+              <div className="pe-field">
+                <label className="pe-label">Year of study</label>
+                <select className="pe-input" value={year} onChange={e => setYear(e.target.value)}>
+                  <option value="">Choose year</option>
+                  <option value="1">First year</option>
+                  <option value="2">Second year</option>
+                  <option value="3">Third year</option>
+                  <option value="4">Fourth year</option>
+                </select>
+              </div>
             </motion.div>
           )}
 
@@ -297,6 +332,8 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
             <motion.div key="skills" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="pe-tab-content">
               <TagInput label="Technical Skills" values={skills} onChange={setSkills} color="pe-tag-purple" />
               <TagInput label="Domain Interests" values={interests} onChange={setInterests} color="pe-tag-blue" />
+              <TagInput label="Certifications" values={certifications} onChange={setCertifications} color="pe-tag-blue" />
+              <TagInput label="Projects" values={projects} onChange={setProjects} color="pe-tag-purple" />
             </motion.div>
           )}
 
@@ -345,7 +382,7 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf,.docx"
                   style={{ display: 'none' }}
                   onChange={e => { if (e.target.files[0]) setResumeFile(e.target.files[0]); }}
                 />
@@ -387,9 +424,11 @@ const ProfileModal = ({ profile, onClose, onSaved, isDark }) => {
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [availableDrives, setAvailableDrives] = useState([]);
-  const [matchScores, setMatchScores] = useState({}); // { companyId: { score, rank_label } }
+  const [matchScores, setMatchScores] = useState({}); // { companyId: { score, max_possible_points, match_percentage, rank_label, breakdown } }
+  const [matchScoreError, setMatchScoreError] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -398,14 +437,16 @@ const StudentDashboard = () => {
   const [activeTab, setActiveTab] = useState(location.state?.openEvents ? 'programs' : 'overview');
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('sd-theme');
-    return saved !== null ? saved === 'dark' : true;
+    return saved !== null ? saved === 'dark' : false;
   });
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [applyingId, setApplyingId] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [eventTrainingPrograms, setEventTrainingPrograms] = useState([]);
   const [registeringProgramId, setRegisteringProgramId] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState('');
 
   const toggleTheme = () => {
     setIsDark(prev => {
@@ -413,6 +454,25 @@ const StudentDashboard = () => {
       localStorage.setItem('sd-theme', next ? 'dark' : 'light');
       return next;
     });
+  };
+
+  const fetchPlacementMatchScores = async () => {
+    try {
+      const token = getToken();
+      if (!token) throw new Error('Your login session has expired. Please sign in again.');
+      const scoreRes = await axios.get(`${API}/api/placements/match-scores`, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+      });
+      if (!scoreRes.data?.success) {
+        throw new Error(scoreRes.data?.message || 'Placement match scores were not returned.');
+      }
+      setMatchScores(scoreRes.data.data || {});
+      setMatchScoreError('');
+    } catch (scoreError) {
+      console.error('Placement match score error:', scoreError);
+      setMatchScores({});
+      setMatchScoreError(scoreError.response?.data?.message || scoreError.message || 'Unable to calculate placement match scores.');
+    }
   };
 
   const fetchDashboard = async () => {
@@ -430,7 +490,10 @@ const StudentDashboard = () => {
       const drivesRes = await axios.get(`${API}/api/placements`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (drivesRes.data?.success) setAvailableDrives(drivesRes.data.data);
+      if (drivesRes.data?.success) {
+        setAvailableDrives(drivesRes.data.data || []);
+        fetchPlacementMatchScores();
+      }
 
       try {
         const programsRes = await axios.get(`${API}/api/events`, { headers: { Authorization: `Bearer ${token}` } });
@@ -447,6 +510,50 @@ const StudentDashboard = () => {
     }
   };
 
+  const fetchEventTrainingPrograms = async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      const response = await axios.get(`${API}/api/events`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data?.success) setEventTrainingPrograms(response.data.data || []);
+    } catch (programError) {
+      console.error('Event and training refresh error:', programError);
+      toast.error(programError.response?.data?.message || 'Unable to load events and training.');
+    }
+  };
+
+  const fetchAiAnalysis = async () => {
+    setAiAnalysisLoading(true);
+    setAiAnalysisError('');
+    try {
+      const token = getToken();
+      if (!token) throw new Error('Your login session has expired. Please sign in again.');
+      const response = await axios.get(`${API}/api/recommendations/analysis`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.data?.success) throw new Error(response.data?.message || 'AI analysis was not returned.');
+      setAiAnalysis(response.data.data);
+    } catch (analysisError) {
+      console.error('Student AI analysis error:', analysisError);
+      setAiAnalysisError(analysisError.response?.data?.message || analysisError.message || 'Unable to load AI analysis.');
+    } finally {
+      setAiAnalysisLoading(false);
+    }
+  };
+
+  const openAiAnalysisTab = () => {
+    setActiveTab('ai-analysis');
+    fetchAiAnalysis();
+  };
+
+  const openEventTrainingTab = () => {
+    setActiveTab('programs');
+    fetchEventTrainingPrograms();
+    fetchAiAnalysis();
+  };
+
   const handleProgramRegistration = async (programId) => {
     if (registeringProgramId) return;
     setRegisteringProgramId(programId);
@@ -457,13 +564,14 @@ const StudentDashboard = () => {
       
       // Update local events and training lists so registrations appear instantly
       setEventTrainingPrograms(current => current.map(program => program._id === programId
-        ? { ...program, isRegistered: true, registrationCount: response.data.data.registrationCount }
+        ? { ...program, isRegistered: true, canRegister: false, registrationCount: response.data.data.registrationCount }
         : program));
       
       toast.success(response.data.message || 'Registered successfully');
       
       // Refresh dashboard data to sync backend state updates and stats
       await fetchDashboard();
+      if (activeTab === 'ai-analysis') await fetchAiAnalysis();
     } catch (registrationError) {
       toast.error(registrationError.response?.data?.message || 'Unable to register for this program.');
     } finally {
@@ -484,11 +592,52 @@ const StudentDashboard = () => {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      const response = await axios.get(`${API}/api/notifications`, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      setNotifications(response.data.data || []);
+      setUnreadCount(response.data.unreadCount || 0);
+    } catch (err) {
+      console.error('Fetch Notifications Error:', err.response?.data?.message || err.message);
+    }
+  };
+
+  const markNotificationRead = async (notificationId) => {
+    try {
+      const token = getToken();
+      await axios.put(`${API}/api/notifications/${notificationId}/read`, {}, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      setNotifications(current => current.map(item => item._id === notificationId ? { ...item, isRead: true } : item));
+      setUnreadCount(count => Math.max(0, count - 1));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not mark notification as read.');
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      const token = getToken();
+      await axios.put(`${API}/api/notifications/read-all`, {}, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      setNotifications(current => current.map(item => ({ ...item, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not mark notifications as read.');
+    }
+  };
+
   const handleProfileSaved = (updatedProfile) => {
     setDashboardData(prev => ({
       ...prev,
       profile: { ...prev.profile, ...updatedProfile },
     }));
+    if (activeTab === 'ai-analysis' || activeTab === 'programs') fetchAiAnalysis();
   };
 
   const handleApply = async (companyId) => {
@@ -512,12 +661,16 @@ const StudentDashboard = () => {
     }
   };
 
-  useEffect(() => { 
-    fetchDashboard(); 
-  }, []);
+  useEffect(() => {
+    fetchDashboard();
+    if (location.state?.openEvents) fetchAiAnalysis();
+    // Initial dashboard loading is keyed to route state, not render-created handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.openEvents]);
 
   useEffect(() => {
     fetchBroadcasts();
+    fetchNotifications();
   }, []);
 
   const theme = isDark ? 'sd-dark' : 'sd-light';
@@ -561,6 +714,8 @@ const StudentDashboard = () => {
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'companies', label: 'Companies', icon: Briefcase },
     { id: 'programs', label: 'Events & Training', icon: Calendar },
+    { id: 'ai-analysis', label: 'AI & Analysis', icon: Sparkles },
+    { id: 'career-guidance', label: 'Career Guidance', icon: Lightbulb },
   ];
 
   return (
@@ -604,7 +759,15 @@ const StudentDashboard = () => {
 
         <nav className="sd-nav">
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setActiveTab(id)} className={`sd-nav-item ${activeTab === id ? 'sd-nav-active' : ''}`}>
+            <button key={id} onClick={() => {
+              if (id === 'career-guidance') navigate('/career-guidance');
+              else if (id === 'programs') openEventTrainingTab();
+              else if (id === 'ai-analysis') openAiAnalysisTab();
+              else {
+                setActiveTab(id);
+                if (id === 'companies') fetchPlacementMatchScores();
+              }
+            }} className={`sd-nav-item ${activeTab === id ? 'sd-nav-active' : ''}`}>
               <Icon size={18} />
               <span>{label}</span>
               {activeTab === id && <div className="sd-nav-indicator" />}
@@ -647,13 +810,20 @@ const StudentDashboard = () => {
               <Edit3 size={16} />
             </button>
             <div style={{ position: 'relative' }}>
-              <button className="sd-topbar-bell" onClick={() => setShowNotifications(!showNotifications)}>
+              <button className="sd-topbar-bell" onClick={() => { setShowNotifications(!showNotifications); fetchNotifications(); }}>
                 <Bell size={18} />
-                {broadcasts.length > 0 && <span className="sd-bell-dot" />}
+                {(broadcasts.length > 0 || unreadCount > 0) && <span className="sd-bell-dot" />}
               </button>
 
+              <AnimatePresence initial={false}>
               {showNotifications && (
-                <div style={{
+                <motion.div
+                  key="student-notifications"
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.99 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  style={{
                   position: 'absolute', right: 0, top: '46px', width: '320px',
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
                   borderRadius: '16px', boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
@@ -677,8 +847,26 @@ const StudentDashboard = () => {
                       ))
                     )}
                   </div>
-                </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-head)' }}>Notifications</h4>
+                      {unreadCount > 0 && <button onClick={markAllNotificationsRead} style={{ fontSize: '11px', color: 'var(--accent-text)' }}>Mark all read</button>}
+                    </div>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                      {notifications.length === 0
+                        ? <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>No notifications</p>
+                        : notifications.map(item => (
+                          <button key={item._id} onClick={() => !item.isRead && markNotificationRead(item._id)} style={{ textAlign: 'left', padding: '9px', borderRadius: '9px', background: item.isRead ? 'var(--bg-input)' : 'var(--accent-soft)', border: '1px solid var(--border)' }}>
+                            <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-head)' }}>{item.title}</p>
+                            <p style={{ fontSize: '11px', color: 'var(--text-sub)', marginTop: '3px' }}>{item.message}</p>
+                            <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '5px' }}>{new Date(item.createdAt).toLocaleDateString()}</p>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                </motion.div>
               )}
+              </AnimatePresence>
             </div>
           </div>
         </header>
@@ -756,7 +944,7 @@ const StudentDashboard = () => {
                         <h3 className="sd-card-title">Recent Applications</h3>
                         <p className="sd-card-sub">Latest placement activity</p>
                       </div>
-                      <button onClick={() => setActiveTab('companies')} className="sd-view-all">View all <ChevronRight size={13} /></button>
+                      <button onClick={() => { setActiveTab('companies'); fetchPlacementMatchScores(); }} className="sd-view-all">View all <ChevronRight size={13} /></button>
                     </div>
                     {appliedCompanies.slice(0, 3).length > 0
                       ? appliedCompanies.slice(0, 3).map((item, i) => <CompanyRow key={i} item={item} />)
@@ -770,7 +958,7 @@ const StudentDashboard = () => {
                         <h3 className="sd-card-title">Upcoming Registered Events</h3>
                         <p className="sd-card-sub">Your registered events</p>
                       </div>
-                      <button onClick={() => setActiveTab('programs')} className="sd-view-all">View all <ChevronRight size={13} /></button>
+                      <button onClick={openEventTrainingTab} className="sd-view-all">View all <ChevronRight size={13} /></button>
                     </div>
                     {registeredPrograms.slice(0, 3).length > 0
                       ? registeredPrograms.slice(0, 3).map((ev, i) => <EventRow key={i} ev={ev} />)
@@ -784,6 +972,11 @@ const StudentDashboard = () => {
             {activeTab === 'companies' && (
               <motion.div key="companies" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
                 <SectionHeader icon={Zap} title="New Opportunities" sub={`${availableDrives.length} active placement drives`} color="#6366f1" />
+                {matchScoreError && (
+                  <p role="status" style={{ marginBottom: '14px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                    Match scores are temporarily unavailable: {matchScoreError}
+                  </p>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                   {availableDrives.map((comp, idx) => (
                     <motion.div key={comp._id || idx} className="sd-card" whileHover={{ translateY: -4 }}>
@@ -799,14 +992,51 @@ const StudentDashboard = () => {
                         </div>
                       </div>
                       {matchScores[comp._id] && (
-                        <div style={{ marginTop: '2px' }}>
+                        <div style={{ marginTop: '8px', padding: '10px', borderRadius: '10px', background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                           <MatchBadge match={matchScores[comp._id]} />
+                          <p style={{ marginTop: '7px', fontSize: '12px', fontWeight: 600, color: 'var(--text-head)' }}>
+                            Total: {matchScores[comp._id].score}/14
+                          </p>
+                          {comp.jobDescription?.url && matchScores[comp._id].job_description_analyzed === false && (
+                            <p style={{ marginTop: '7px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                              This job description could not be analyzed; its score uses the available profile and eligibility details.
+                            </p>
+                          )}
+                          {matchScores[comp._id].breakdown && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 10px', marginTop: '8px', fontSize: '11px', color: 'var(--text-sub)' }}>
+                              <span title={matchScores[comp._id].breakdown.matched_skills?.join(', ') || 'No matched skills'}>
+                                Matching skill: +{matchScores[comp._id].breakdown.skill_points}
+                                {matchScores[comp._id].breakdown.matched_skills?.length
+                                  ? ` (${matchScores[comp._id].breakdown.matched_skills.join(', ')})`
+                                  : ''}
+                              </span>
+                              <span title={matchScores[comp._id].breakdown.matched_interests?.join(', ') || 'No matched interests'}>
+                                Domain interest: +{matchScores[comp._id].breakdown.domain_points}
+                              </span>
+                              <span title={matchScores[comp._id].breakdown.matched_project_keywords?.join(', ') || 'No matched project keywords'}>
+                                Project keyword: +{matchScores[comp._id].breakdown.project_points}
+                              </span>
+                              <span>Branch/year eligibility: +{matchScores[comp._id].breakdown.eligibility_points}</span>
+                              <span title={matchScores[comp._id].breakdown.matched_certifications?.join(', ') || 'No matched certifications'}>
+                                Certification: +{matchScores[comp._id].breakdown.certification_points}
+                              </span>
+                              <span>CGPA condition: +{matchScores[comp._id].breakdown.cgpa_points}</span>
+                            </div>
+                          )}
+                          {matchScores[comp._id].breakdown?.missing_skills?.length > 0 && (
+                            <p style={{ marginTop: '7px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                              JD skills not found in your profile: {matchScores[comp._id].breakdown.missing_skills.join(', ')}
+                            </p>
+                          )}
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', marginTop: '4px' }}>
                         <p style={{ color: 'var(--text-sub)' }}><strong>Package:</strong> {comp.ctc}</p>
                         <p style={{ color: 'var(--text-sub)' }}><strong>Eligibility:</strong> {comp.eligibilityCriteria?.cgpa || 0} CGPA</p>
                         <p style={{ color: 'var(--text-sub)' }}><strong>Deadline:</strong> {new Date(comp.visitDate).toLocaleDateString()}</p>
+                        {comp.canApply === false && comp.eligibilityReason && (
+                          <p style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{comp.eligibilityReason}</p>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                         {comp.jobDescription?.url && (
@@ -819,13 +1049,13 @@ const StudentDashboard = () => {
                           style={{
                             flex: 1,
                             padding: '8px',
-                            opacity: appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 0.6 : 1,
-                            cursor: appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'not-allowed' : 'pointer'
+                            opacity: comp.canApply === false || appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 0.6 : 1,
+                            cursor: comp.canApply === false || appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'not-allowed' : 'pointer'
                           }}
                           onClick={() => handleApply(comp._id)}
-                          disabled={applyingId === comp._id || appliedCompanies.some(ac => ac.companyId?._id === comp._id)}
+                          disabled={comp.canApply === false || applyingId === comp._id || appliedCompanies.some(ac => ac.companyId?._id === comp._id)}
                         >
-                          {applyingId === comp._id ? 'Applying...' : appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'Applied ✓' : 'Apply Now'}
+                          {applyingId === comp._id ? 'Applying...' : appliedCompanies.some(ac => ac.companyId?._id === comp._id) ? 'Applied ✓' : comp.canApply === false ? 'Not eligible' : 'Apply Now'}
                         </button>
                       </div>
                     </motion.div>
@@ -851,9 +1081,99 @@ const StudentDashboard = () => {
             )}
 
             {/* ════════ EVENTS & TRAINING ════════ */}
+            {activeTab === 'ai-analysis' && (
+              <motion.div key="ai-analysis" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <SectionHeader icon={Sparkles} title="AI & Analysis Results" sub="Resume-based relevance, skill matches, and eligibility for each opportunity." color="#8b5cf6" />
+                  <button type="button" className="sd-btn-ghost" onClick={fetchAiAnalysis} disabled={aiAnalysisLoading}>
+                    {aiAnalysisLoading ? 'Analyzing…' : 'Refresh analysis'}
+                  </button>
+                </div>
+                <p style={{ margin: '12px 0 18px', color: 'var(--text-muted)', fontSize: '12px', lineHeight: 1.6 }}>
+                  Company relevance uses your profile skills, interests, projects, certifications, and academic eligibility against each opportunity’s extracted requirements.
+                </p>
+
+                {aiAnalysisError && <p role="alert" style={{ marginBottom: '16px', color: '#f87171', fontSize: '13px' }}>{aiAnalysisError}</p>}
+                {aiAnalysisLoading && !aiAnalysis && <div className="sd-loading-screen"><Loader2 className="pe-spin" /><p className="sd-loading-text">Analyzing your profile and opportunities…</p></div>}
+                {!aiAnalysisLoading && aiAnalysis && (
+                  <>
+                    <div className="sd-card sd-analysis-signals">
+                      <div className="sd-analysis-signals-header">
+                        <div>
+                          <h3 className="sd-card-title">Resume &amp; profile signals</h3>
+                          <p className="sd-card-sub">
+                            {aiAnalysis.resume ? `Analyzed resume: ${aiAnalysis.resume.fileName}` : 'No analyzed resume yet. Upload one from your profile to improve matching.'}
+                          </p>
+                        </div>
+                        {aiAnalysis.resume && <span className="sd-count-badge sd-count-blue">{aiAnalysis.resume.keywordScore} keywords</span>}
+                      </div>
+                      <div className="sd-analysis-signals-grid">
+                        {[
+                          ['Skills', [...new Set([...(aiAnalysis.profileSkills || []), ...(aiAnalysis.resume?.skills || [])])]],
+                          ['Programming languages', aiAnalysis.resume?.programmingLanguages || []],
+                          ['Tools & frameworks', aiAnalysis.resume?.tools || []],
+                          ['Role interests', [...new Set([...(aiAnalysis.profileInterests || []), ...(aiAnalysis.resume?.roleInterests || [])])]],
+                          ['Projects', aiAnalysis.resume?.projects || []],
+                          ['Project keywords', aiAnalysis.resume?.projectKeywords || []],
+                          ['Certifications', aiAnalysis.resume?.certifications || []],
+                        ].map(([label, values]) => (
+                          <section key={label} className="sd-analysis-signal">
+                            <div className="sd-analysis-signal-heading">
+                              <strong>{label}</strong>
+                              <span>{values.length}</span>
+                            </div>
+                            <div className="sd-analysis-signal-tags">
+                              {values.length
+                                ? values.map((value, index) => (
+                                  <span
+                                    key={`${label}-${index}`}
+                                    className="sd-tag sd-tag-blue"
+                                    title={String(value)}
+                                  >
+                                    {value}
+                                  </span>
+                                ))
+                                : <span className="sd-analysis-none">None found</span>}
+                            </div>
+                          </section>
+                        ))}
+                        {aiAnalysis.resume?.education && (
+                          <section className="sd-analysis-signal sd-analysis-education">
+                            <div className="sd-analysis-signal-heading"><strong>Education</strong></div>
+                            <p>{aiAnalysis.resume.education}</p>
+                          </section>
+                        )}
+                      </div>
+                    </div>
+
+                    <SectionHeader icon={Calendar} title="Event & Training Relevance" sub={`${aiAnalysis.events?.length || 0} programs analyzed · registration eligibility shown`} color="#10b981" />
+                    {aiAnalysis.events?.length
+                      ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px', margin: '14px 0 24px' }}>
+                          {aiAnalysis.events.map(item => (
+                            <AnalysisOpportunityCard key={item.opportunity_id} item={item} kind="event" onRegister={handleProgramRegistration} registeringId={registeringProgramId} />
+                          ))}
+                        </div>
+                      : <EmptyCard text="No upcoming events or training programs are available for your department." icon={Calendar} />}
+
+                    <SectionHeader icon={Briefcase} title="Company Relevance" sub={`${aiAnalysis.placements?.length || 0} placement opportunities analyzed`} color="#6366f1" />
+                    {aiAnalysis.placements?.length
+                      ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px', marginTop: '14px' }}>
+                          {aiAnalysis.placements.map(item => (
+                            <AnalysisOpportunityCard key={item.opportunity_id} item={item} kind="placement" />
+                          ))}
+                        </div>
+                      : <EmptyCard text="No current placement opportunities to analyze." icon={Briefcase} />}
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {/* ════════ EVENTS & TRAINING ════════ */}
             {activeTab === 'programs' && (
               <motion.div key="programs" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="sd-section">
                 <SectionHeader icon={Calendar} title="Events & Training" sub={`${eventTrainingPrograms.length} available program${eventTrainingPrograms.length !== 1 ? 's' : ''} for your department`} color="#10b981" />
+                {aiAnalysisLoading && <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '-12px 0 14px' }}>Calculating resume match scores…</p>}
+                {aiAnalysisError && <p role="status" style={{ color: '#f87171', fontSize: '12px', margin: '-12px 0 14px' }}>Event match scores are unavailable: {aiAnalysisError}</p>}
                 
                 {eventTrainingPrograms.length > 0 ? (
                   <div className="sd-events-grid">
@@ -863,6 +1183,7 @@ const StudentDashboard = () => {
                           <span className="sd-event-chip">{program.type} · {program.category}</span>
                           <span className="sd-event-date">{new Date(program.date).toLocaleString()}</span>
                         </div>
+                        <EventMatchBadge programId={program._id} events={aiAnalysis?.events} />
                         <h3 className="sd-event-title">{program.title}</h3>
                         <p className="sd-event-desc">{program.description}</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', margin: '4px 0' }}>
@@ -874,10 +1195,10 @@ const StudentDashboard = () => {
                           <button
                             type="button"
                             className="sd-event-btn"
-                            disabled={program.isRegistered || registeringProgramId === program._id}
+                            disabled={program.isRegistered || program.canRegister === false || !program.registrationOpen || registeringProgramId === program._id}
                             onClick={() => handleProgramRegistration(program._id)}
                           >
-                            {program.isRegistered ? 'Registered ✓' : registeringProgramId === program._id ? 'Registering…' : 'Register'}
+                            {program.isRegistered ? 'Registered ✓' : registeringProgramId === program._id ? 'Registering…' : !program.registrationOpen ? 'Registration closed' : program.canRegister === false ? 'Not eligible' : 'Register'}
                           </button>
                         </div>
                         <div className="sd-event-glow" />
@@ -899,6 +1220,7 @@ const StudentDashboard = () => {
                           <span className="sd-event-chip">{program.type} · {program.category}</span>
                           <span className="sd-event-date">📅 {new Date(program.date).toLocaleDateString()}</span>
                         </div>
+                        <EventMatchBadge programId={program._id} events={aiAnalysis?.events} />
                         <h3 className="sd-event-title">{program.title}</h3>
                         <p className="sd-event-desc">{program.description}</p>
                         <div className="sd-event-footer">
@@ -934,19 +1256,115 @@ const StatusBadge = ({ status }) => {
 };
 const EmptyState = ({ text }) => <div className="sd-empty-inline"><p>{text}</p></div>;
 
-// Shows the AI recommendation score on a placement card, e.g. "18 pts · Highly Recommended"
+// Shows the fixed-rubric score and relevance on each placement card.
 const matchRankConfig = {
   'highly recommended': { cls: 'sd-match-high', label: 'Highly Recommended' },
   'recommended': { cls: 'sd-match-mid', label: 'Recommended' },
   'low priority': { cls: 'sd-match-low', label: 'Low Priority' },
 };
+const EventMatchBadge = ({ programId, events = [] }) => {
+  const match = events.find(item => String(item.opportunity_id) === String(programId));
+  if (!match) return null;
+
+  return (
+    <div title="Resume/profile relevance based on matched skills, interests, project keywords, and eligibility" style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', width: 'fit-content', padding: '6px 10px', borderRadius: '999px', background: 'rgba(16,185,129,0.12)', color: '#10b981', fontSize: '12px', marginTop: '9px' }}>
+      <Sparkles size={13} />
+      <strong>{match.match_percentage}% match</strong>
+      <span style={{ color: 'var(--text-sub)' }}>{match.score}/14 pts · {match.rank_label}</span>
+    </div>
+  );
+};
+
 const MatchBadge = ({ match }) => {
   if (!match) return null;
   const cfg = matchRankConfig[match.rank_label] || { cls: 'sd-match-low', label: match.rank_label };
   return (
-    <span className={`sd-match-badge ${cfg.cls}`} title="AI-computed match score based on your skills, interests, and eligibility">
-      <Star size={11} /> {match.score} pts · {cfg.label}
+    <span className={`sd-match-badge ${cfg.cls}`} title="Company score based on your profile skills, interests, projects, certifications, and eligibility">
+      <Star size={11} /> {match.score}/14 pts · {match.match_percentage}% · {cfg.label}
     </span>
+  );
+};
+
+const AnalysisOpportunityCard = ({ item, kind, onRegister, registeringId }) => {
+  const breakdown = item.breakdown || {};
+  const canTakeAction = kind === 'event' ? item.canRegister : item.canApply;
+  const actionReason = kind === 'event' ? item.registrationReason : item.eligibilityReason;
+  const alreadyRegistered = kind === 'event' && item.isRegistered;
+  const [showDescription, setShowDescription] = useState(false);
+  const hasLongDescription = (item.description || '').length > 260;
+
+  return (
+    <article className="sd-card sd-analysis-opportunity">
+      <div className="sd-analysis-opportunity-heading">
+        <div>
+          <span className="sd-analysis-opportunity-kind">
+            {kind === 'event' ? `${item.type || 'Event'} · ${item.category || 'Program'}` : item.jobRole || 'Placement'}
+          </span>
+          <h3 className="sd-analysis-opportunity-title">
+            {kind === 'event' ? item.title : item.companyName || item.title}
+          </h3>
+        </div>
+        <div className="sd-analysis-score">
+          <strong>{item.match_percentage}%</strong>
+          <span>{item.score}/14 · {item.rank_label}</span>
+        </div>
+      </div>
+      <div className="sd-analysis-score-track" aria-label={`${item.match_percentage}% match`}>
+        <div style={{ width: `${item.match_percentage}%` }} />
+      </div>
+      {item.description && (
+        <div className="sd-analysis-description">
+          <p className={showDescription ? '' : 'sd-analysis-description-collapsed'}>{item.description}</p>
+          {hasLongDescription && (
+            <button type="button" onClick={() => setShowDescription(value => !value)}>
+              {showDescription ? 'Show less' : 'Read full description'}
+            </button>
+          )}
+        </div>
+      )}
+      <div className="sd-analysis-breakdown">
+        {[
+          ['Matching skill', breakdown.skill_points, 3, breakdown.matched_skills],
+          ['Domain interest', breakdown.domain_points, 2, breakdown.matched_interests],
+          ['Project keyword', breakdown.project_points, 2, breakdown.matched_project_keywords],
+          ['Branch/year eligibility', breakdown.eligibility_points, 3],
+          ['Certification', breakdown.certification_points, 1, breakdown.matched_certifications],
+          ['CGPA condition', breakdown.cgpa_points, 3],
+        ].map(([label, points, max, matches]) => (
+          <div key={label} className="sd-analysis-breakdown-item" title={matches?.join(', ') || undefined}>
+            <span>{label}</span>
+            <strong>+{points || 0}<small>/{max}</small></strong>
+          </div>
+        ))}
+      </div>
+      {breakdown.missing_skills?.length > 0 && (
+        <details className="sd-analysis-missing-skills">
+          <summary>Skills to consider developing ({breakdown.missing_skills.length})</summary>
+          <p>{breakdown.missing_skills.join(', ')}</p>
+        </details>
+      )}
+      {kind === 'event' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+          <span style={{ color: canTakeAction || alreadyRegistered ? '#10b981' : 'var(--text-muted)', fontSize: '11px' }}>
+            {alreadyRegistered ? 'Already registered' : actionReason}
+          </span>
+          <button
+            type="button"
+            className="sd-event-btn"
+            disabled={!canTakeAction || alreadyRegistered || registeringId === item.opportunity_id}
+            onClick={() => onRegister(item.opportunity_id)}
+          >
+            {alreadyRegistered ? 'Registered ✓' : registeringId === item.opportunity_id ? 'Registering…' : canTakeAction ? 'Register' : 'Not eligible'}
+          </button>
+        </div>
+      )}
+      {kind === 'placement' && (
+        <p style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', color: canTakeAction ? '#10b981' : 'var(--text-muted)', fontSize: '11px' }}>
+          {canTakeAction ? 'You meet placement eligibility.' : item.eligibilityReason}
+          {item.jobDescriptionAnalyzed === false && ' Job description could not be analyzed.'}
+        </p>
+      )}
+    </article>
   );
 };
 
@@ -1178,7 +1596,6 @@ const MODAL_STYLES = `
    Dashboard styles
 ───────────────────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .sd-dark {
@@ -1450,6 +1867,37 @@ const STYLES = `
   }
   .sd-card-title { font-size: 14px; font-weight: 700; color: var(--text-head); }
   .sd-card-sub   { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .sd-analysis-signals { padding: 20px; margin-bottom: 20px; }
+  .sd-analysis-signals-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .sd-analysis-signals-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+  .sd-analysis-signal { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); }
+  .sd-analysis-signal-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text-sub); font-size: 11px; }
+  .sd-analysis-signal-heading > span { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .sd-analysis-signal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .sd-analysis-signal-tags .sd-tag { max-width: 100%; overflow-wrap: anywhere; }
+  .sd-analysis-none { color: var(--text-muted); font-size: 11px; }
+  .sd-analysis-education { grid-column: 1 / -1; }
+  .sd-analysis-education p { margin-top: 8px; color: var(--text-body); font-size: 12px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+  .sd-analysis-opportunity { min-width: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .sd-analysis-opportunity-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .sd-analysis-opportunity-kind { color: var(--accent); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .sd-analysis-opportunity-title { margin-top: 4px; color: var(--text-head); font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+  .sd-analysis-score { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 2px; text-align: right; }
+  .sd-analysis-score strong { color: var(--accent); font-size: 20px; line-height: 1.1; }
+  .sd-analysis-score span { color: var(--text-muted); font-size: 10px; text-transform: capitalize; }
+  .sd-analysis-score-track { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .sd-analysis-score-track > div { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#6366f1,#10b981); }
+  .sd-analysis-description { color: var(--text-sub); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+  .sd-analysis-description-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+  .sd-analysis-description button { margin-top: 6px; padding: 0; border: 0; background: transparent; color: var(--accent-text); font-size: 11px; font-weight: 600; cursor: pointer; }
+  .sd-analysis-breakdown { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .sd-analysis-breakdown-item { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; padding: 7px 8px; border-radius: 8px; background: var(--bg-input); color: var(--text-sub); font-size: 10px; }
+  .sd-analysis-breakdown-item > span { overflow-wrap: anywhere; }
+  .sd-analysis-breakdown-item > strong { flex-shrink: 0; color: var(--text-head); font-size: 12px; }
+  .sd-analysis-breakdown-item small { color: var(--text-muted); font-size: 9px; font-weight: 500; }
+  .sd-analysis-missing-skills { color: var(--text-muted); font-size: 11px; }
+  .sd-analysis-missing-skills summary { cursor: pointer; font-weight: 600; }
+  .sd-analysis-missing-skills p { margin-top: 6px; line-height: 1.5; overflow-wrap: anywhere; }
   .sd-count-badge { margin-left: auto; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); font-size: 11px; font-weight: 600; color: var(--text-muted); }
   .sd-count-blue  { background: rgba(14,165,233,0.08); color: #0ea5e9; }
   .sd-view-all {
@@ -1557,6 +2005,8 @@ const STYLES = `
     .sd-sidebar { display: none; }
     .sd-two-col { grid-template-columns: 1fr; }
     .sd-stats-row { grid-template-columns: repeat(2,1fr); }
+    .sd-analysis-signals-grid { grid-template-columns: 1fr; }
+    .sd-analysis-education { grid-column: auto; }
     .sd-hero { flex-direction: column; align-items: flex-start; }
     .sd-hero-content { max-width: 100%; }
     .sd-hero-illustration { display: none; }

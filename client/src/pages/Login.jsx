@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, LayoutDashboard, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, LayoutDashboard, ArrowLeft, LoaderCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { getRoleDashboardPath } from '../roleRoutes';
+import API from '../api';
 
 const Login = () => {
   // Added state variables for inputs
@@ -16,18 +18,19 @@ const Login = () => {
   
   const navigate = useNavigate();
   const { login } = useAuth();
+  const reduceMotion = useReducedMotion();
 
   const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!usn || !password) {
       toast.error('Please fill all fields');
       return;
     }
 
-    e.preventDefault();
     const loginData = { usn, password, role };
     setloading(true);
     try {
-        const { data } = await axios.post('https://campusconnect-api-nele.onrender.com/api/auth/login', loginData);
+        const { data } = await axios.post(`${API}/api/auth/login`, loginData);
         login(data);
         setloading(false);
 
@@ -39,7 +42,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
+    <div className="cc-auth-page cc-auth-login min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
       <button
         onClick={() => navigate("/")}
         className="absolute top-6 left-6 flex items-center gap-2 bg-white shadow-md border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-100 transition z-50"
@@ -48,9 +51,14 @@ const Login = () => {
         <span className="font-medium text-slate-700">Back</span>
       </button>
 
-      <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-6xl w-full min-h-[760px] overflow-hidden">
+      <motion.div
+        className="cc-auth-shell bg-white rounded-3xl shadow-xl flex flex-col md:flex-row max-w-6xl w-full min-h-[760px] overflow-hidden"
+        initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+      >
         {/* Left Side: Branding & Graphics */}
-        <div className="md:w-1/2 bg-blue-500 p-10 flex flex-col justify-center text-white relative">
+        <div className="cc-auth-brand md:w-1/2 bg-blue-500 p-10 flex flex-col justify-center text-white relative">
           <div>
             <h1 className="text-4xl font-bold mb-4 leading-tight">
               Simplify campus management with our dashboard.
@@ -63,7 +71,7 @@ const Login = () => {
           <div className="mt-8 flex justify-center">
             <div className="bg-blue-400/30 w-72 h-72 rounded-full flex items-center justify-center border border-white/20 overflow-hidden">
               <img
-                src="/loginlogo.jpg"
+                src="/signup.png"
                 alt="Login Illustration"
                 className="w-full h-full object-cover"
               />
@@ -76,7 +84,7 @@ const Login = () => {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="md:w-1/2 p-10 md:p-14 flex flex-col justify-center">
+        <div className="cc-auth-content md:w-1/2 p-10 md:p-14 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-8">
             <div className="bg-orange-500 p-2 rounded-lg text-white">
               <LayoutDashboard size={24} />
@@ -102,7 +110,7 @@ const Login = () => {
                 <option value="Department Placement Coordinator">Department Placement Coordinator</option>
                 <option value="Faculty">Faculty</option>
                 <option value="Event Coordinator">Event Coordinator</option>
-                {/* <option value="Admin">Admin</option> */}
+                <option value="Admin">Administrator</option>
               </select>
             </div>
 
@@ -139,21 +147,22 @@ const Login = () => {
               </button>
             </div>
 
-            <button 
+            <motion.button
               type="submit"
               disabled={loading}
               className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 transition-all hover:bg-blue-600 active:scale-[0.98]
              disabled:bg-blue-400 disabled:cursor-not-allowed disabled:pointer-events-none disabled:scale-100 disabled:shadow-none"
+              whileTap={loading ? undefined : { scale: 0.985 }}
             >
-              {loading? "Logging in..." : "Login"}
-            </button>
+              {loading ? <span className="inline-flex items-center justify-center gap-2"><LoaderCircle size={18} className="cc-spinner" />Logging in...</span> : "Login"}
+            </motion.button>
           </form>
 
           <p className="text-center mt-8 text-slate-600">
             Don't have an account? <a href="/signup" className="text-blue-500 font-bold hover:underline">Signup</a>
           </p>
         </div>
-      </div>
+        </motion.div>
     </div>
   );
 };

@@ -25,7 +25,7 @@ Run locally:
 from flask import Flask, request, jsonify
 
 from recommender import recommend, recommend_jobs, recommend_events
-from resume_parser import parse_resume
+from resume_parser import parse_job_description, parse_resume
 
 app = Flask(__name__)
 
@@ -47,8 +47,22 @@ def upload_resume():
         return jsonify({"error": "No file provided. Expected form field 'file'."}), 400
 
     file = request.files["file"]
-    result = parse_resume(file)
+    result = parse_resume(file, filename=file.filename)
+    if result.get("error"):
+        return jsonify({"error": result["error"]}), 422
     return jsonify(result)
+
+
+@app.route("/job-description/parse", methods=["POST"])
+def parse_job_description_api():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided. Expected form field 'file'."}), 400
+
+    file = request.files["file"]
+    try:
+        return jsonify(parse_job_description(file, filename=file.filename))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 422
 
 
 # ================= COMBINED RECOMMENDATION (strict scoring) =================
