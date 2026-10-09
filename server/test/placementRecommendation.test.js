@@ -1,6 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildPlacementPayload } = require('../controllers/recommendationController');
+const {
+  analyzeLegacyJobDescriptions,
+  buildPlacementPayload,
+} = require('../controllers/recommendationController');
 
 test('placement recommendation payload includes extracted JD requirements and context', () => {
   const payload = buildPlacementPayload({
@@ -53,4 +56,39 @@ test('placement recommendation uses the stored company eligibility instead of de
   assert.deepEqual(payload.required_skills, ['AWS', 'Docker', 'Kubernetes', 'Linux']);
   assert.deepEqual(payload.required_certifications, ['AWS', 'Azure']);
   assert.ok(payload.job_description_text.includes('Cloud Deployment'));
+});
+
+test('legacy missing JD files do not prevent recommendations from using saved company criteria', async () => {
+  const [company] = await analyzeLegacyJobDescriptions([{
+    _id: 'legacy-company',
+    name: 'Legacy Company',
+    description: 'Backend engineering role',
+    domain: 'Software Engineering',
+    requiredSkills: ['Node.js'],
+    eligibilityCriteria: { cgpa: 7.5, branches: ['CSE'] },
+    jobDescription: { url: '/uploads/resumes/__missing_legacy_jd_test__.pdf' },
+  }]);
+
+  assert.equal(company.jobDescriptionAnalysisStatus, 'unavailable');
+  assert.deepEqual(buildPlacementPayload(company).required_skills, ['Node.js']);
+  assert.deepEqual(buildPlacementPayload(company).eligibility_branch, ['CSE']);
+  assert.equal(buildPlacementPayload(company).min_cgpa, 7.5);
+});
+
+test('cached JD analysis is kept without requiring its original upload file', async () => {
+  const cachedAnalysis = {
+    extractedText: 'Build cloud infrastructure.',
+    requiredSkills: ['AWS'],
+    roleInterestKeywords: ['Cloud Computing'],
+  };
+  const [company] = await analyzeLegacyJobDescriptions([{
+    _id: 'cached-company',
+    name: 'Cached Company',
+    requiredSkills: ['Terraform'],
+    jobDescription: { url: '/uploads/resumes/__missing_cached_jd_test__.pdf' },
+    jobDescriptionAnalysis: cachedAnalysis,
+  }]);
+
+  assert.equal(company.jobDescriptionAnalysisStatus, 'analyzed');
+  assert.equal(company.jobDescriptionAnalysis, cachedAnalysis);
 });

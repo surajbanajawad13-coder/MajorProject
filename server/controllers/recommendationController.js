@@ -105,6 +105,10 @@ async function analyzeLegacyJobDescriptions(companies) {
       return { ...company, jobDescriptionAnalysisStatus: 'unavailable' };
     }
 
+    if (company.jobDescriptionAnalysis?.extractedText) {
+      return { ...company, jobDescriptionAnalysisStatus: 'analyzed' };
+    }
+
     try {
       const parsed = await analyzeStoredJobDescription(company);
       if (!parsed) {
@@ -129,6 +133,12 @@ async function analyzeLegacyJobDescriptions(companies) {
       }
       return updated;
     } catch (error) {
+      if (error.code === 'ENOENT') {
+        console.warn(
+          `Stored job description is unavailable for ${company.name} (${company._id}); using saved company requirements.`
+        );
+        return { ...company, jobDescriptionAnalysisStatus: 'unavailable' };
+      }
       console.error(`Job description analysis failed for ${company._id}:`, error.message);
       throw new Error(`Unable to refresh job description analysis for ${company.name}: ${error.message}`);
     }
@@ -140,6 +150,7 @@ async function analyzeLegacyJobDescriptions(companies) {
 // expects, instead of re-implementing this mapping.
 exports.buildProfilePayload = buildProfilePayload;
 exports.buildPlacementPayload = buildPlacementPayload;
+exports.analyzeLegacyJobDescriptions = analyzeLegacyJobDescriptions;
 exports.AI_SERVICE_URL = AI_SERVICE_URL;
 
 /**

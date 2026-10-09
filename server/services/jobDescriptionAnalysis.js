@@ -51,7 +51,9 @@ const analyzeStoredJobDescription = async company => {
   const filePath = path.resolve(uploadRoot, 'resumes', filename);
   if (!['.pdf', '.docx'].includes(path.extname(filename).toLowerCase())) return null;
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Stored job description file not found: ${filename}`);
+    const error = new Error(`Stored job description file not found: ${filename}`);
+    error.code = 'ENOENT';
+    throw error;
   }
 
   const jobDescriptionAnalysis = await analyzeJobDescriptionFile({
